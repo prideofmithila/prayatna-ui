@@ -1,0 +1,67 @@
+<nav class="navbar bg-light shadow-sm">
+  <div class="container-fluid px-3">
+    <div class="d-flex align-items-center w-100">
+      <!-- Left: Hamburger (mobile) and Brand (desktop) -->
+      <div class="d-flex align-items-center" style="flex:0 0 auto;">
+        <!-- Mobile hamburger only -->
+        <button class="btn btn-outline-primary me-2 d-md-none" type="button" (click)="toggleOffcanvas($event, 'mobile')" aria-label="Toggle menu">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-list" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path fill-rule="evenodd" d="M2.5 12.5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1h-10a.5.5 0 0 1-.5-.5zm0-5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1h-10a.5.5 0 0 1-.5-.5zm0-5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1h-10a.5.5 0 0 1-.5-.5z"/>
+          </svg>
+        </button>
+
+        <!-- Desktop brand on left -->
+        <a class="navbar-brand d-none d-md-inline-flex align-items-center gap-2" routerLink="/">
+          <img src="assets/logo.png" alt="logo" class="app-logo" onerror="this.style.display='none'"/>
+          <span class="fs-5 fw-semibold">Prayatna</span>
+        </a>
+      </div>
+
+      <!-- Center: Links (desktop only) -->
+      <div class="flex-grow-1 d-none d-md-flex justify-content-center position-relative">
+        <ul class="nav" #centerNav>
+          <li class="nav-item" *ngFor="let link of links | slice:0:visibleCount; let i = index">
+            <a class="nav-link" [routerLink]="link.route">{{ link.label }}</a>
+          </li>
+        </ul>
+        <!-- More button shown when there are overflowing links -->
+        <button #moreBtn class="btn btn-link nav-more ms-2" [class.d-none]="visibleCount >= links.length" (click)="toggleOffcanvas($event, 'more')">More</button>
+      </div>
+
+      <!-- Center (mobile): Brand centered on small screens -->
+      <div class="flex-grow-1 text-center d-md-none">
+        <a class="navbar-brand d-inline-flex align-items-center gap-2" routerLink="/">
+          <img src="assets/logo.png" alt="logo" class="app-logo" onerror="this.style.display='none'"/>
+          <span class="fs-5 fw-semibold">Prayatna</span>
+        </a>
+      </div>
+
+      <!-- Right: Profile -->
+      <div class="d-flex align-items-center" style="flex:0 0 auto;">
+        <button class="btn btn-link p-0" id="profileBtn" aria-label="Profile">
+          <img src="assets/profile.png" alt="profile" class="rounded-circle profile-icon" onerror="this.style.backgroundColor='#adb5bd'; this.style.width='36px'; this.style.height='36px'; this.style.display='inline-block'; this.style.borderRadius='50%'; this.style.content='';"/>
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Hidden measurement container for calculating overflow -->
+<div style="position:absolute;left:-9999px;top:-9999px;visibility:hidden;display:flex;gap:0.5rem;" #measureContainer>
+  <a class="nav-link measure-item" *ngFor="let l of links" #measureItem>{{ l.label }}</a>
+</div>
+
+<!-- Offcanvas menu (left) -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasMenu" aria-labelledby="offcanvasMenuLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="offcanvasMenuLabel">Menu</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body" #offcanvasBody>
+    <ul class="nav flex-column">
+      <li class="nav-item" *ngFor="let link of offcanvasLinks">
+        <a class="nav-link" [routerLink]="link.route" (click)="closeOffcanvas()">{{ link.label }}</a>
+      </li>
+    </ul>
+  </div>
+</div>
