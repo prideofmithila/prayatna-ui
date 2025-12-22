@@ -1,0 +1,136 @@
+<div class="session-form container">
+  <h2>{{ editingIndex === null ? 'Add Session' : 'Edit Session' }}</h2>
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="mb-3">
+      <label class="form-label">Session Name</label>
+      <input class="form-control" formControlName="sessionName" #sessionNameInput />
+    </div>
+
+    <div class="row g-2 mb-3">
+      <div class="col-auto">
+        <label class="form-label">Hours</label>
+        <input type="number" class="form-control" formControlName="durationHours" />
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Minutes</label>
+        <input type="number" class="form-control" formControlName="durationMinutes" />
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Seconds</label>
+        <input type="number" class="form-control" formControlName="durationSeconds" />
+      </div>
+    </div>
+
+    <hr />
+
+    <div class="tasks">
+      <h4>Tasks</h4>
+      <div class="mb-2" *ngFor="let t of tasks.controls; let i = index;">
+        <div class="card mb-2 p-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <strong>{{ t.get('taskName')?.value }}</strong>
+              <div class="small text-muted">Duration: {{ taskGroupDuration(t) }}s</div>
+            </div>
+            <div>
+              <button type="button" class="btn btn-sm btn-outline-primary me-1" (click)="openTaskModal(i)">Edit</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" (click)="tasks.removeAt(i)">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary" (click)="openTaskModal()">Add Task</button>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+      <button class="btn btn-success" type="submit">Save</button>
+      <button class="btn btn-secondary" type="button" (click)="cancel()">Cancel</button>
+    </div>
+  </form>
+
+  <!-- Task Modal -->
+  <div class="modal-overlay" *ngIf="taskModalOpen" appPortal (click)="closeTaskModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ editingTaskIndex === null ? 'Add Task' : 'Edit Task' }}</h5>
+        <button class="btn-close" (click)="closeTaskModal()"></button>
+      </div>
+    <div class="modal-body">
+      <form [formGroup]="taskModalForm">
+        <div class="mb-2">
+          <label class="form-label">Task name</label>
+          <input class="form-control" formControlName="taskName" />
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Has subtasks?</label>
+          <div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" formControlName="hasSubtasks" [value]="true" /> <label class="form-check-label">Yes</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" formControlName="hasSubtasks" [value]="false" /> <label class="form-check-label">No</label>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!taskModalForm.get('hasSubtasks')?.value" class="mb-2">
+          <label class="form-label">Duration (seconds)</label>
+          <input type="number" class="form-control" formControlName="taskDuration" />
+        </div>
+
+        <div *ngIf="taskModalForm.get('hasSubtasks')?.value">
+          <h6>Subtasks</h6>
+          <div *ngFor="let s of taskModalSubtasks.controls; let si = index" [formGroup]="controlAsGroup(s)" class="d-flex gap-2 align-items-center mb-2">
+            <div class="flex-grow-1">
+              <input class="form-control" formControlName="subtaskName" placeholder="Name" />
+            </div>
+            <div style="width:120px">
+              <input type="number" class="form-control" formControlName="duration" />
+            </div>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary" type="button" (click)="openSubtaskModal(si)">Edit</button>
+              <button class="btn btn-sm btn-outline-danger" type="button" (click)="removeSubtaskInModal(si)">X</button>
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <button class="btn btn-sm btn-primary" type="button" (click)="openSubtaskModal()">Add Subtask</button>
+            <div class="small text-muted mt-2">Total subtask duration: {{ taskModalTotalDuration }}s</div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer d-flex gap-2">
+      <button class="btn btn-primary" (click)="saveTaskModal()">Save Task</button>
+      <button class="btn btn-secondary" (click)="closeTaskModal()">Close</button>
+    </div>
+  </div>
+
+  <!-- Subtask Modal -->
+  <div class="modal-overlay" *ngIf="subtaskModalOpen" appPortal (click)="closeSubtaskModal()">
+    <div class="modal-card small" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ editingSubtaskIndex === null ? 'Add Subtask' : 'Edit Subtask' }}</h5>
+        <button class="btn-close" (click)="closeSubtaskModal()"></button>
+      </div>
+    <div class="modal-body">
+      <form [formGroup]="subtaskModalForm">
+        <div class="mb-2">
+          <label class="form-label">Subtask Name</label>
+          <input class="form-control" formControlName="subtaskName" />
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Duration (seconds)</label>
+          <input type="number" class="form-control" formControlName="duration" />
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer d-flex gap-2">
+      <button class="btn btn-primary" (click)="saveSubtaskModal()">Save</button>
+      <button class="btn btn-secondary" (click)="closeSubtaskModal()">Cancel</button>
+    </div>
+  </div>
+</div>

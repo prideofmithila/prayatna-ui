@@ -1,0 +1,42 @@
+<div class="sessions-page container py-3">
+  <div class="d-flex mb-3 align-items-center gap-3">
+    <h3 class="me-auto mb-0">Sessions</h3>
+
+    <div class="w-100 d-flex align-items-center justify-content-between">
+      <div class="w-100 me-3">
+        <div class="search-full">
+          <span class="search-icon">🔎</span>
+          <input class="form-control" placeholder="Search Sessions" [(ngModel)]="searchTerm" aria-label="Search" />
+        </div>
+      </div>
+
+      <button class="btn btn-primary d-none d-sm-inline-flex" (click)="createNew()">Add Session</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="row g-3">
+        <div *ngFor="let s of filteredSessions; let i = index" class="col-6 col-sm-6 col-md-4">
+          <div class="session-card">
+            <div class="card-inner" (click)="edit(i)" style="cursor:pointer">
+              <div class="title-row">
+                <div class="session-title">{{ s.sessionName }}</div>
+                <div class="duration">{{ s.totalDuration && s.totalDuration>0 ? durationToHuman(s.totalDuration) : 'Untimed' }}</div>
+              </div>
+              <div class="meta-row">{{ s.tasks.length }} tasks</div>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-outline-secondary" (click)="duplicate(i); $event.stopPropagation();">⎘</button>
+              <button class="btn btn-sm btn-outline-danger" (click)="delete(i); $event.stopPropagation();">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="!sessions.length" class="col-12 text-muted">No sessions yet. Use the + button to add one.</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="fab d-inline-flex d-md-none" title="New session" (click)="createNew()">+</button>
+</div>

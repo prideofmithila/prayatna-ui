@@ -14,6 +14,7 @@ import { filter } from 'rxjs/operators';
 export class Header implements AfterViewInit, OnDestroy {
   links = [
     { label: 'Home', route: '/' },
+    { label: 'Sessions', route: '/sessions' },
     { label: 'About', route: '/about' },
     { label: 'Services', route: '/services' },
     { label: 'Products', route: '/products' },
