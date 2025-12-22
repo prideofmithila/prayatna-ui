@@ -38,3 +38,32 @@ body {
   height: 100%;
 }
 /* You can add global styles to this file, and also import other style files */
+
+/* Modal styles for session forms (global so portals appended to body are styled) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index: 99999;
+  opacity: 0;
+  animation: modalFade .12s ease forwards;
+}
+.modal-card {
+  z-index: 100000;
+  position: relative;
+  max-height: 90vh;
+  overflow: auto;
+  transform: translateY(6px);
+  animation: modalPop .12s ease forwards;
+  background:#fff;
+  border-radius:12px;
+  padding:18px;
+  width: min(720px, 96%);
+  box-shadow: 0 18px 46px rgba(0,0,0,0.28);
+}
+.modal-card.small { width: min(420px, 92%); }
+@keyframes modalFade { to { opacity: 1 } }
+@keyframes modalPop { to { transform: translateY(0) } }
