@@ -2,6 +2,8 @@ import { Component, AfterViewInit, OnDestroy, ViewChild, ViewChildren, QueryList
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import Offcanvas from 'bootstrap/js/dist/offcanvas';
+import { OAuthService } from 'angular-oauth2-oidc';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-header',
@@ -23,6 +25,14 @@ export class Header implements AfterViewInit, OnDestroy {
   offcanvasLinks = [...this.links];
   visibleCount = this.links.length;
 
+  // Auth state
+  isLoggedIn = false;
+  userName: string | null = null;
+  userPicture: string | null = null;
+
+  // Cache last access token so we don't repeatedly call userinfo
+  private lastAccessToken: string | null = null;
+
   private _offcanvasInstance: Offcanvas | null = null;
   private resizeObserver: any;
 
@@ -31,7 +41,14 @@ export class Header implements AfterViewInit, OnDestroy {
   @ViewChild('measureContainer', { read: ElementRef }) measureContainer!: ElementRef<HTMLElement>;
   @ViewChildren('measureItem', { read: ElementRef }) measureItems!: QueryList<ElementRef<HTMLElement>>;
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor(private cdr: ChangeDetectorRef, private oauthService: OAuthService) {
+    // only fetch profile when a relevant auth event occurs (token received/refreshed)
+    this.oauthService.events.pipe(
+      filter((e: any) => e?.type === 'token_received' || e?.type === 'token_refreshed' || e?.type === 'session_terminated')
+    ).subscribe(() => {
+      this.updateUserFromToken();
+    });
+  }
 
   ngAfterViewInit(): void {
     // initial compute after view is rendered
@@ -39,10 +56,49 @@ export class Header implements AfterViewInit, OnDestroy {
     // recompute on resize
     this.resizeObserver = () => this.computeVisibleLinks();
     window.addEventListener('resize', this.resizeObserver);
+
+    // set initial auth state (force true to load profile once on init)
+    setTimeout(() => this.updateUserFromToken(true), 0);
   }
 
   ngOnDestroy(): void {
     window.removeEventListener('resize', this.resizeObserver);
+  }
+
+  private updateUserFromToken(force: boolean = false) {
+    const access = this.oauthService.getAccessToken() || null;
+
+    if (!access) {
+      // not authenticated
+      this.isLoggedIn = false;
+      this.userName = null;
+      this.userPicture = null;
+      this.lastAccessToken = null;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    // if token hasn't changed and not forced, skip profile fetch
+    if (!force && this.lastAccessToken === access) {
+      return;
+    }
+
+    this.lastAccessToken = access;
+
+    // load user profile once per token change
+    this.oauthService.loadUserProfile().then((profile: any) => {
+      this.isLoggedIn = true;
+      this.userName = profile?.name || profile?.preferred_username || profile?.given_name || null;
+      this.userPicture = profile?.picture || null;
+      this.cdr.detectChanges();
+    }).catch(() => {
+      // fallback to token claims
+      const claims: any = this.oauthService.getIdentityClaims() || {};
+      this.isLoggedIn = true;
+      this.userName = claims.name || claims.email || null;
+      this.userPicture = claims.picture || null;
+      this.cdr.detectChanges();
+    });
   }
 
   private computeVisibleLinks() {
@@ -100,5 +156,15 @@ export class Header implements AfterViewInit, OnDestroy {
 
   closeOffcanvas() {
     this._offcanvasInstance?.hide();
+  }
+
+  // Auth helpers
+  signIn() {
+    this.oauthService.initCodeFlow();
+  }
+
+  signOut() {
+    // clear tokens and redirect to home
+    this.oauthService.logOut();
   }
 }
