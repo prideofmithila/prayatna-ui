@@ -36,11 +36,18 @@
         </a>
       </div>
 
-      <!-- Right: Profile -->
+      <!-- Right: Profile / Auth -->
       <div class="d-flex align-items-center" style="flex:0 0 auto;">
-        <button class="btn btn-link p-0" id="profileBtn" aria-label="Profile">
-          <img src="assets/profile.png" alt="profile" class="rounded-circle profile-icon" onerror="this.style.backgroundColor='#adb5bd'; this.style.width='36px'; this.style.height='36px'; this.style.display='inline-block'; this.style.borderRadius='50%'; this.style.content='';"/>
-        </button>
+        <ng-container *ngIf="isLoggedIn; else signedOut">
+          <div class="d-flex align-items-center gap-2">
+            <img [src]="userPicture || 'assets/profile.png'" alt="profile" class="rounded-circle profile-icon"/>
+            <span class="d-none d-md-inline">{{ userName }}</span>
+            <button class="btn btn-link" (click)="signOut()">Sign out</button>
+          </div>
+        </ng-container>
+        <ng-template #signedOut>
+          <button class="btn btn-primary btn-sm" (click)="signIn()">Sign in</button>
+        </ng-template>
       </div>
     </div>
   </div>
