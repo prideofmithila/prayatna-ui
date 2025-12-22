@@ -1,0 +1,38 @@
+/* Header styles for the Offcanvas navbar */
+:host {
+  display: block;
+}
+
+.navbar .app-logo {
+  height: 28px;
+  width: auto;
+}
+
+.profile-icon {
+  height: 36px;
+  width: 36px;
+  object-fit: cover;
+  border: 2px solid rgba(0,0,0,0.04);
+}
+
+/* Ensure the center brand stays centered while left and right controls keep natural size */
+.navbar .container-fluid > .d-flex {
+  gap: 0.5rem;
+}
+
+/* Center nav layout */
+#centerNav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-more {
+  white-space: nowrap;
+}
+
+/* Small screens: slightly smaller spacing */
+@media (max-width: 576px) {
+  .navbar .app-logo { height: 24px; }
+  .profile-icon { height: 32px; width: 32px; }
+}
