@@ -38,6 +38,10 @@ export class SessionsListComponent {
     this.router.navigate(['/sessions/new']);
   }
 
+  view(i: number) {
+    this.router.navigate(['/sessions', i, 'view']);
+  }
+
   edit(i: number) {
     this.router.navigate(['/sessions', i, 'edit']);
   }

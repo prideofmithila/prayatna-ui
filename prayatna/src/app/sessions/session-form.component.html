@@ -1,50 +1,111 @@
-<div class="session-form container">
-  <h2>{{ editingIndex === null ? 'Add Session' : 'Edit Session' }}</h2>
+<div class="session-form container mt-4 pb-4">
+  <ng-container *ngIf="isViewMode; else editHeader">
+    <div class="d-flex justify-content-center mb-3 summary-actions gap-3">
+      <button type="button" class="btn btn-link p-2 text-secondary" title="Edit" (click)="goToEdit()">
+        <span class="material-icons" style="font-size: 26px;">edit</span>
+      </button>
+      <button type="button" class="btn btn-link p-2 text-primary" title="Play" (click)="playSession()">
+        <span class="material-icons" style="font-size: 30px;">play_circle_filled</span>
+      </button>
+      <button type="button" class="btn btn-link p-2 text-danger" title="Delete" (click)="deleteCurrent()">
+        <span class="material-icons" style="font-size: 26px;">delete</span>
+      </button>
+    </div>
+
+    <div class="view-summary-card mb-4 d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-3">
+        <span class="material-icons text-primary" style="font-size: 30px;">play_arrow</span>
+        <h4 class="mb-0">{{ form.get('sessionName')?.value || 'Untitled Session' }}</h4>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="material-icons text-timer" style="font-size: 22px;">timer</span>
+          <div class="fw-semibold">{{ formatDuration(viewTotalDurationSeconds()) }}</div>
+      </div>
+    </div>
+  </ng-container>
+
+  <ng-template #editHeader>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h2 class="mb-0">{{ editingIndex === null ? 'Add Session' : 'Edit Session' }}</h2>
+    </div>
+  </ng-template>
 
   <form [formGroup]="form" (ngSubmit)="save()">
-    <div class="mb-3">
-      <label class="form-label">Session Name</label>
-      <input class="form-control" formControlName="sessionName" #sessionNameInput />
+    <div class="form-floating mb-3" *ngIf="!isViewMode">
+      <input class="form-control" id="sessionName" formControlName="sessionName" placeholder="Session Name" #sessionNameInput />
+      <label for="sessionName">Session Name</label>
     </div>
 
-    <div class="row g-2 mb-3">
-      <div class="col-auto">
-        <label class="form-label">Hours</label>
-        <input type="number" class="form-control" formControlName="durationHours" />
-      </div>
-      <div class="col-auto">
-        <label class="form-label">Minutes</label>
-        <input type="number" class="form-control" formControlName="durationMinutes" />
-      </div>
-      <div class="col-auto">
-        <label class="form-label">Seconds</label>
-        <input type="number" class="form-control" formControlName="durationSeconds" />
-      </div>
-    </div>
-
-    <hr />
+    <hr *ngIf="!isViewMode" />
 
     <div class="tasks">
-      <h4>Tasks</h4>
-      <div class="mb-2" *ngFor="let t of tasks.controls; let i = index;">
-        <div class="card mb-2 p-2">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>{{ t.get('taskName')?.value }}</strong>
-              <div class="small text-muted">Duration: {{ taskGroupDuration(t) }}s</div>
-            </div>
-            <div>
-              <button type="button" class="btn btn-sm btn-outline-primary me-1" (click)="openTaskModal(i)">Edit</button>
-              <button type="button" class="btn btn-sm btn-outline-danger" (click)="tasks.removeAt(i)">Delete</button>
+      <div class="d-flex justify-content-between align-items-center mb-3" *ngIf="!isViewMode">
+        <h5 class="mb-0">Tasks in Session</h5>
+        <button type="button" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; padding: 0;" (click)="openTaskModal()">
+          <span class="material-icons">add</span>
+        </button>
+      </div>
+      
+      <div *ngIf="tasks.controls.length === 0" class="text-center text-muted py-4">
+        <p class="mb-0">No task is added. Click on add (+) button to add task to session.</p>
+      </div>
+      
+      <div *ngIf="tasks.controls.length > 0">
+        <h6 class="mb-3">Tasks:</h6>
+        <div class="row g-3">
+          <div class="col-12 col-md-6 col-lg-4" *ngFor="let t of tasks.controls; let i = index;">
+            <div class="task-card h-100">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <h5 class="mb-0 text-primary">{{ t.get('taskName')?.value }}</h5>
+                <div *ngIf="!isViewMode">
+                  <button type="button" class="btn btn-sm btn-link text-secondary p-1" (click)="openTaskModal(i)">
+                    <span class="material-icons" style="font-size: 18px;">edit</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-link text-danger p-1" (click)="tasks.removeAt(i)">
+                    <span class="material-icons" style="font-size: 18px;">delete</span>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Task Duration</span>
+                <strong>{{ formatDuration(taskGroupDuration(t)) }}</strong>
+              </div>
+              
+              <div *ngIf="t.get('hasSubtasks')?.value && getSubtasksControls(i).length > 0" class="mt-2">
+                <h6 class="mb-2">Subtasks</h6>
+                <div *ngFor="let st of getSubtasksControls(i)" class="d-flex justify-content-between mb-1 ps-3">
+                  <span>- {{ st.get('subtaskName')?.value || 'Untitled' }}</span>
+                  <span>{{ formatDuration(st.get('duration')?.value || 0) }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      <button type="button" class="btn btn-primary" (click)="openTaskModal()">Add Task</button>
     </div>
 
-    <div class="mt-4 d-flex gap-2">
+    <hr class="my-3" *ngIf="!isViewMode" />
+
+    <div class="mb-3" *ngIf="!isViewMode">
+      <label class="form-label mb-2">Session Duration (optional)</label>
+      <div class="d-flex gap-2 flex-nowrap">
+        <div class="form-floating flex-fill">
+          <input type="number" class="form-control" id="durationHours" formControlName="durationHours" placeholder="Hours" />
+          <label for="durationHours">Hours</label>
+        </div>
+        <div class="form-floating flex-fill">
+          <input type="number" class="form-control" id="durationMinutes" formControlName="durationMinutes" placeholder="Minutes" />
+          <label for="durationMinutes">Minutes</label>
+        </div>
+        <div class="form-floating flex-fill">
+          <input type="number" class="form-control" id="durationSeconds" formControlName="durationSeconds" placeholder="Seconds" />
+          <label for="durationSeconds">Seconds</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2" *ngIf="!isViewMode">
       <button class="btn btn-success" type="submit">Save</button>
       <button class="btn btn-secondary" type="button" (click)="cancel()">Cancel</button>
     </div>
@@ -57,11 +118,11 @@
         <h5 class="modal-title">{{ editingTaskIndex === null ? 'Add Task' : 'Edit Task' }}</h5>
         <button class="btn-close" (click)="closeTaskModal()"></button>
       </div>
-    <div class="modal-body">
+    <div class="modal-body mt-3">
       <form [formGroup]="taskModalForm">
-        <div class="mb-2">
-          <label class="form-label">Task name</label>
-          <input class="form-control" formControlName="taskName" />
+        <div class="form-floating mb-2">
+          <input class="form-control" id="taskName" formControlName="taskName" placeholder="Task name" />
+          <label for="taskName">Task name</label>
         </div>
 
         <div class="mb-2">
@@ -77,29 +138,49 @@
         </div>
 
         <div *ngIf="!taskModalForm.get('hasSubtasks')?.value" class="mb-2">
-          <label class="form-label">Duration (seconds)</label>
-          <input type="number" class="form-control" formControlName="taskDuration" />
+          <label class="form-label mb-2">Duration</label>
+          <div class="d-flex gap-2 flex-nowrap">
+            <div class="form-floating flex-fill">
+              <input type="number" class="form-control" id="taskDurationHours" formControlName="durationHours" placeholder="Hours" />
+              <label for="taskDurationHours">Hours</label>
+            </div>
+            <div class="form-floating flex-fill">
+              <input type="number" class="form-control" id="taskDurationMinutes" formControlName="durationMinutes" placeholder="Minutes" />
+              <label for="taskDurationMinutes">Minutes</label>
+            </div>
+            <div class="form-floating flex-fill">
+              <input type="number" class="form-control" id="taskDurationSeconds" formControlName="durationSeconds" placeholder="Seconds" />
+              <label for="taskDurationSeconds">Seconds</label>
+            </div>
+          </div>
         </div>
 
         <div *ngIf="taskModalForm.get('hasSubtasks')?.value">
-          <h6>Subtasks</h6>
-          <div *ngFor="let s of taskModalSubtasks.controls; let si = index" [formGroup]="controlAsGroup(s)" class="d-flex gap-2 align-items-center mb-2">
-            <div class="flex-grow-1">
-              <input class="form-control" formControlName="subtaskName" placeholder="Name" />
-            </div>
-            <div style="width:120px">
-              <input type="number" class="form-control" formControlName="duration" />
-            </div>
-            <div>
-              <button class="btn btn-sm btn-outline-secondary" type="button" (click)="openSubtaskModal(si)">Edit</button>
-              <button class="btn btn-sm btn-outline-danger" type="button" (click)="removeSubtaskInModal(si)">X</button>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0">Subtasks</h6>
+            <button class="btn btn-sm btn-primary" type="button" (click)="openSubtaskModal()">Add Subtask</button>
+          </div>
+          
+          <div *ngFor="let s of taskModalSubtasks.controls; let si = index" [formGroup]="controlAsGroup(s)">
+            <div class="card mb-2 p-2">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                  <strong>{{ s.get('subtaskName')?.value || 'Untitled Subtask' }}</strong>
+                  <div class="small text-muted">Duration: {{ formatDuration(s.get('duration')?.value || 0) }}</div>
+                </div>
+                <div class="d-flex align-items-center">
+                  <button class="btn btn-sm btn-link text-secondary p-1 me-1" type="button" (click)="openSubtaskModal(si)">
+                    <span class="material-icons" style="font-size: 18px;">edit</span>
+                  </button>
+                  <button class="btn btn-sm btn-link text-danger p-1" type="button" (click)="removeSubtaskInModal(si)">
+                    <span class="material-icons" style="font-size: 18px;">delete</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="mt-2">
-            <button class="btn btn-sm btn-primary" type="button" (click)="openSubtaskModal()">Add Subtask</button>
-            <div class="small text-muted mt-2">Total subtask duration: {{ taskModalTotalDuration }}s</div>
-          </div>
+          <div class="small text-muted mt-2">Total subtask duration: {{ formatDuration(taskModalTotalDuration) }}</div>
         </div>
       </form>
     </div>
@@ -116,15 +197,28 @@
         <h5 class="modal-title">{{ editingSubtaskIndex === null ? 'Add Subtask' : 'Edit Subtask' }}</h5>
         <button class="btn-close" (click)="closeSubtaskModal()"></button>
       </div>
-    <div class="modal-body">
+    <div class="modal-body mt-3">
       <form [formGroup]="subtaskModalForm">
-        <div class="mb-2">
-          <label class="form-label">Subtask Name</label>
-          <input class="form-control" formControlName="subtaskName" />
+        <div class="form-floating mb-2">
+          <input class="form-control" id="subtaskName" formControlName="subtaskName" placeholder="Subtask Name" />
+          <label for="subtaskName">Subtask Name</label>
         </div>
         <div class="mb-2">
-          <label class="form-label">Duration (seconds)</label>
-          <input type="number" class="form-control" formControlName="duration" />
+          <label class="form-label mb-2">Duration</label>
+          <div class="d-flex gap-2 flex-nowrap">
+            <div class="form-floating flex-fill">
+              <input type="number" class="form-control" id="subtaskDurationHours" formControlName="durationHours" placeholder="Hours" />
+              <label for="subtaskDurationHours">Hours</label>
+            </div>
+            <div class="form-floating flex-fill">
+              <input type="number" class="form-control" id="subtaskDurationMinutes" formControlName="durationMinutes" placeholder="Minutes" />
+              <label for="subtaskDurationMinutes">Minutes</label>
+            </div>
+            <div class="form-floating flex-fill">
+              <input type="number" class="form-control" id="subtaskDurationSeconds" formControlName="durationSeconds" placeholder="Seconds" />
+              <label for="subtaskDurationSeconds">Seconds</label>
+            </div>
+          </div>
         </div>
       </form>
     </div>
