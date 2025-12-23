@@ -16,6 +16,7 @@ import { Session, Task } from './session.model';
 export class SessionFormComponent implements OnInit {
   sessions: Session[] = [];
   editingIndex: number | null = null;
+  isViewMode = false;
   form: FormGroup;
 
   taskModalOpen = false;
@@ -45,12 +46,18 @@ export class SessionFormComponent implements OnInit {
       taskName: ['', Validators.required],
       hasSubtasks: [false],
       taskDuration: [0],
+      durationHours: [0],
+      durationMinutes: [0],
+      durationSeconds: [0],
       subtasks: this.fb.array([])
     });
 
     this.subtaskModalForm = this.fb.group({
       subtaskName: ['', Validators.required],
-      duration: [0, [Validators.min(0)]]
+      duration: [0, [Validators.min(0)]],
+      durationHours: [0],
+      durationMinutes: [0],
+      durationSeconds: [0]
     });
 
     const dur = this.taskModalForm.get('taskDuration') as FormControl;
@@ -73,11 +80,15 @@ export class SessionFormComponent implements OnInit {
 
   ngOnInit() {
     this.route.paramMap.subscribe(pm => {
+      this.isViewMode = (this.route.snapshot.routeConfig?.path || '').includes('view');
       const id = pm.get('id');
       if (id !== null) {
         const idx = Number(id);
         if (!isNaN(idx) && idx >= 0 && idx < this.sessions.length) {
           this.loadForEdit(idx);
+          if (this.isViewMode) {
+            this.form.disable({ emitEvent: false });
+          }
         }
       }
     });
@@ -105,10 +116,14 @@ export class SessionFormComponent implements OnInit {
 
     if (this.editingTaskIndex !== null) {
       const t = this.tasks.at(this.editingTaskIndex).value as any;
-      group.patchValue({ taskName: t.taskName, hasSubtasks: !!t.hasSubtasks, taskDuration: t.taskDuration || 0 });
+      const dur = t.taskDuration || 0;
+      const h = Math.floor(dur / 3600);
+      const m = Math.floor((dur % 3600) / 60);
+      const s = dur % 60;
+      group.patchValue({ taskName: t.taskName, hasSubtasks: !!t.hasSubtasks, taskDuration: t.taskDuration || 0, durationHours: h, durationMinutes: m, durationSeconds: s });
       (t.subtasks || []).forEach((st: any) => ms.push(this.fb.group({ subtaskName: [st.subtaskName], duration: [st.duration] })));
     } else {
-      group.reset({ taskName: '', hasSubtasks: false, taskDuration: 0 });
+      group.reset({ taskName: '', hasSubtasks: false, taskDuration: 0, durationHours: 0, durationMinutes: 0, durationSeconds: 0 });
     }
     this.taskModalOpen = true;
     setTimeout(()=>{ try { this.sessionNameInput?.nativeElement?.focus(); } catch {} }, 0);
@@ -121,8 +136,15 @@ export class SessionFormComponent implements OnInit {
     if (hasSub && this.taskModalSubtasks.length === 0) { alert('Please add at least one subtask'); return; }
     if (this.taskModalForm.invalid) return;
     const val = this.taskModalForm.value as any;
-    let computedDuration = Number(val.taskDuration) || 0;
-    if (hasSub) { computedDuration = this.taskModalSubtasks.controls.reduce((acc, c) => acc + (Number(c.get('duration')?.value || 0)), 0); }
+    let computedDuration = 0;
+    if (hasSub) { 
+      computedDuration = this.taskModalSubtasks.controls.reduce((acc, c) => acc + (Number(c.get('duration')?.value || 0)), 0); 
+    } else {
+      const h = Number(val.durationHours) || 0;
+      const m = Number(val.durationMinutes) || 0;
+      const s = Number(val.durationSeconds) || 0;
+      computedDuration = h * 3600 + m * 60 + s;
+    }
     const taskData: Partial<Task> = { taskName: val.taskName, hasSubtasks: hasSub, taskDuration: computedDuration, subtasks: (val.subtasks || []).map((st:any)=>({ subtaskName: st.subtaskName, duration: Number(st.duration)||0 })) };
 
     if (this.editingTaskIndex === null) { this.addTask(taskData); }
@@ -132,9 +154,43 @@ export class SessionFormComponent implements OnInit {
   }
 
   get taskModalSubtasks(): FormArray<FormGroup> { return this.taskModalForm.get('subtasks') as FormArray<FormGroup>; }
-  openSubtaskModal(index?: number) { this.editingSubtaskIndex = typeof index === 'number' ? index : null; const sa = this.taskModalSubtasks; if (this.editingSubtaskIndex !== null){ const st = sa.at(this.editingSubtaskIndex).value as any; this.subtaskModalForm.patchValue({ subtaskName: st.subtaskName, duration: st.duration }); } else { this.subtaskModalForm.reset({ subtaskName:'', duration:0 }); } this.subtaskModalOpen = true; }
-  closeSubtaskModal() { this.subtaskModalOpen = false; this.editingSubtaskIndex = null; this.subtaskModalForm.reset({ subtaskName:'', duration:0 }); }
-  saveSubtaskModal(){ if(this.subtaskModalForm.invalid) return; const val = this.subtaskModalForm.value as any; const sa = this.taskModalSubtasks; if(this.editingSubtaskIndex===null) sa.push(this.fb.group({ subtaskName:[val.subtaskName], duration:[Number(val.duration)||0] })); else sa.at(this.editingSubtaskIndex).patchValue({ subtaskName:val.subtaskName, duration:Number(val.duration)||0 }); this.closeSubtaskModal(); }
+  openSubtaskModal(index?: number) { 
+    this.editingSubtaskIndex = typeof index === 'number' ? index : null; 
+    const sa = this.taskModalSubtasks; 
+    if (this.editingSubtaskIndex !== null){ 
+      const st = sa.at(this.editingSubtaskIndex).value as any; 
+      const dur = st.duration || 0;
+      const h = Math.floor(dur / 3600);
+      const m = Math.floor((dur % 3600) / 60);
+      const s = dur % 60;
+      this.subtaskModalForm.patchValue({ subtaskName: st.subtaskName, duration: st.duration, durationHours: h, durationMinutes: m, durationSeconds: s }); 
+    } else { 
+      this.subtaskModalForm.reset({ subtaskName:'', duration:0, durationHours: 0, durationMinutes: 0, durationSeconds: 0 }); 
+    } 
+    this.subtaskModalOpen = true; 
+  }
+  closeSubtaskModal() { this.subtaskModalOpen = false; this.editingSubtaskIndex = null; this.subtaskModalForm.reset({ subtaskName:'', duration:0, durationHours: 0, durationMinutes: 0, durationSeconds: 0 }); }
+  saveSubtaskModal(){ 
+    if(this.subtaskModalForm.invalid) return; 
+    const val = this.subtaskModalForm.value as any; 
+    const h = Number(val.durationHours) || 0;
+    const m = Number(val.durationMinutes) || 0;
+    const s = Number(val.durationSeconds) || 0;
+    const totalDuration = h * 3600 + m * 60 + s;
+    const sa = this.taskModalSubtasks; 
+    if(this.editingSubtaskIndex===null) 
+      sa.push(this.fb.group({ subtaskName:[val.subtaskName], duration:[totalDuration] })); 
+    else 
+      sa.at(this.editingSubtaskIndex).patchValue({ subtaskName:val.subtaskName, duration:totalDuration }); 
+    this.closeSubtaskModal(); 
+  }
+
+  viewTotalDurationSeconds(): number {
+    const total = Number(this.form.get('totalDuration')?.value || 0);
+    if (total > 0) return total;
+    const tasksVal = (this.form.get('tasks')?.value as any[]) || [];
+    return tasksVal.reduce((acc, t) => acc + (Number(t.taskDuration) || 0), 0);
+  }
   removeSubtaskInModal(index:number){ const sa=this.taskModalSubtasks; sa.removeAt(index); }
 
   get taskModalTotalDuration(){ return this.taskModalSubtasks.controls.reduce((acc,c)=>acc+(Number(c.get('duration')?.value||0)),0); }
@@ -142,6 +198,14 @@ export class SessionFormComponent implements OnInit {
   taskGroupDuration(taskGroup:any){ const hasSub=!!taskGroup.get('hasSubtasks')?.value; if(hasSub){ const subt=taskGroup.get('subtasks') as FormArray|null; if(!subt) return 0; return subt.controls.reduce((acc,c)=>acc+(Number(c.get('duration')?.value||0)),0); } return Number(taskGroup.get('taskDuration')?.value||0); }
 
   controlAsGroup(c: AbstractControl | null): FormGroup { return c as FormGroup; }
+  
+  formatDuration(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h}h ${m}m ${s}s`;
+  }
+  
   loadForEdit(idx:number){ const s=this.sessions[idx]; this.editingIndex=idx; const total=s.totalDuration||0; const h=Math.floor(total/3600); const m=Math.floor((total%3600)/60); const sec=total%60; this.form.patchValue({ sessionName: s.sessionName, isTimed: s.isTimed, totalDuration: s.totalDuration||0, durationHours:h, durationMinutes:m, durationSeconds:sec }); while(this.tasks.length) this.tasks.removeAt(0); s.tasks.forEach(t=>this.addTask(t)); }
 
   save(){ const value=this.form.value as any; const hours=Number(value.durationHours)||0; const minutes=Number(value.durationMinutes)||0; const seconds=Number(value.durationSeconds)||0; const computedTotal=hours*3600+minutes*60+seconds; const session:Session={ sessionName:value.sessionName, isTimed:!!value.isTimed, totalDuration: computedTotal>0?computedTotal:(Number(value.totalDuration)||0), tasks:(value.tasks||[]).map((t:any)=>({ taskName:t.taskName, hasSubtasks:!!t.hasSubtasks, taskDuration:Number(t.taskDuration)||0, subtasks:(t.subtasks||[]).map((st:any)=>({ subtaskName:st.subtaskName, duration:Number(st.duration)||0 })) })) };
@@ -153,4 +217,8 @@ export class SessionFormComponent implements OnInit {
   }
 
   cancel(){ this.router.navigate(['/sessions']); }
+
+  goToEdit(){ if(this.editingIndex===null) return; this.router.navigate(['/sessions', this.editingIndex, 'edit']); }
+  deleteCurrent(){ if(this.editingIndex===null) return; if(!confirm('Delete session?')) return; this.sessions.splice(this.editingIndex,1); this.sessionsService.save(this.sessions); this.router.navigate(['/sessions']); }
+  playSession(){ alert('Session playback coming soon.'); }
 }
