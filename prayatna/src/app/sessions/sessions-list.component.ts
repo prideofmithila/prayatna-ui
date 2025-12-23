@@ -42,6 +42,10 @@ export class SessionsListComponent {
     this.router.navigate(['/sessions', i, 'view']);
   }
 
+  play(i: number) {
+    this.router.navigate(['/sessions', i, 'timer']);
+  }
+
   edit(i: number) {
     this.router.navigate(['/sessions', i, 'edit']);
   }

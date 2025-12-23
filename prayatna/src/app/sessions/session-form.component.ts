@@ -187,9 +187,7 @@ export class SessionFormComponent implements OnInit {
 
   viewTotalDurationSeconds(): number {
     const total = Number(this.form.get('totalDuration')?.value || 0);
-    if (total > 0) return total;
-    const tasksVal = (this.form.get('tasks')?.value as any[]) || [];
-    return tasksVal.reduce((acc, t) => acc + (Number(t.taskDuration) || 0), 0);
+    return total;
   }
   removeSubtaskInModal(index:number){ const sa=this.taskModalSubtasks; sa.removeAt(index); }
 
@@ -220,5 +218,9 @@ export class SessionFormComponent implements OnInit {
 
   goToEdit(){ if(this.editingIndex===null) return; this.router.navigate(['/sessions', this.editingIndex, 'edit']); }
   deleteCurrent(){ if(this.editingIndex===null) return; if(!confirm('Delete session?')) return; this.sessions.splice(this.editingIndex,1); this.sessionsService.save(this.sessions); this.router.navigate(['/sessions']); }
-  playSession(){ alert('Session playback coming soon.'); }
+  playSession(){ 
+    if (this.editingIndex !== null) {
+      this.router.navigate(['/sessions', this.editingIndex, 'timer']);
+    }
+  }
 }

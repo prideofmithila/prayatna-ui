@@ -5,4 +5,5 @@ export const routes: Routes = [
   { path: 'sessions/new', loadComponent: () => import('./sessions/session-form.component').then(m => m.SessionFormComponent) },
   { path: 'sessions/:id/view', loadComponent: () => import('./sessions/session-form.component').then(m => m.SessionFormComponent) },
   { path: 'sessions/:id/edit', loadComponent: () => import('./sessions/session-form.component').then(m => m.SessionFormComponent) },
+  { path: 'sessions/:id/timer', loadComponent: () => import('./sessions/session-timer.component').then(m => m.SessionTimerComponent) },
 ];

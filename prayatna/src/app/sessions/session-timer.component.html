@@ -1,0 +1,70 @@
+<div class="session-timer-page container mt-2 pb-3">
+  <!-- Session Timer Card -->
+  <div class="timer-card session-timer-card mb-3">
+    <div class="timer-header d-flex justify-content-between align-items-center mb-2">
+      <button 
+        class="btn btn-link p-0" 
+        [class.text-secondary]="selectedTaskIndex === null"
+        [class.text-primary]="selectedTaskIndex !== null"
+        (click)="togglePlayPause()">
+        <span class="material-icons" style="font-size: 36px;" [class.opacity-50]="selectedTaskIndex === null">{{ isRunning ? 'pause' : 'play_arrow' }}</span>
+      </button>
+      <span class="timer-title flex-grow-1 text-center">Session Timer</span>
+      <button class="btn btn-link p-0" (click)="isRunning ? stopTimer() : null" [class.opacity-50]="!isRunning">
+        <span class="material-icons text-danger" style="font-size: 32px;">stop</span>
+      </button>
+    </div>
+    <div class="timer-display session-timer-display">
+      {{ formatTime(sessionElapsedSeconds) }}
+    </div>
+  </div>
+
+  <!-- Task Selection Card -->
+  <div class="timer-card task-selection-card mb-3">
+    <div class="task-selection-title mb-4">Current Task: {{ getSelectedTaskName() }}</div>
+    
+    <!-- Task Duration Info (always show when task is selected) -->
+    <div class="timer-display task-timer-display mb-3 mt-3">
+      {{ formatTime(taskElapsedSeconds) }}
+    </div>
+    
+    <!-- Subtask Info Section (always show when task has subtasks) -->
+    <div *ngIf="selectedTaskIndex !== null && session && session.tasks[selectedTaskIndex] && session.tasks[selectedTaskIndex].hasSubtasks && session.tasks[selectedTaskIndex].subtasks && session.tasks[selectedTaskIndex].subtasks!.length > 0" class="subtask-info">
+      <div class="subtask-row">
+        <div class="subtask-column">
+          <div class="subtask-label">Current Subtask</div>
+          <div class="subtask-name">{{ currentSubtaskIndex < session!.tasks[selectedTaskIndex!].subtasks!.length ? session!.tasks[selectedTaskIndex!].subtasks![currentSubtaskIndex].subtaskName : 'Completed' }}</div>
+        </div>
+        <div class="subtask-column">
+          <div class="subtask-label">Next Subtask</div>
+          <div class="subtask-name">{{ currentSubtaskIndex + 1 < session!.tasks[selectedTaskIndex!].subtasks!.length ? session!.tasks[selectedTaskIndex!].subtasks![currentSubtaskIndex + 1].subtaskName : '-' }}</div>
+        </div>
+      </div>
+      <div class="timer-display subtask-timer-display">
+        {{ formatTime(subtaskElapsedSeconds) }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Instruction Text -->
+  <p class="text-center text-muted mb-2">Select to start or switch between tasks</p>
+
+  <!-- Task List -->
+  <div class="row g-2" *ngIf="session">
+    <div class="col-6" *ngFor="let task of session.tasks; let i = index">
+      <div 
+        class="task-select-card" 
+        [class.selected]="selectedTaskIndex === i"
+        (click)="selectTask(i)">
+        <div class="task-name">{{ task.taskName }}</div>
+        <div class="task-duration-display">{{ formatDuration(getTaskDuration(task)) }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- No Tasks Message -->
+  <div *ngIf="!session || session.tasks.length === 0" class="text-center text-muted py-4">
+    <p>No tasks available in this session.</p>
+    <button class="btn btn-primary" (click)="goBack()">Go Back</button>
+  </div>
+</div>
