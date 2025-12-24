@@ -39,10 +39,16 @@
       <!-- Right: Profile / Auth -->
       <div class="d-flex align-items-center" style="flex:0 0 auto;">
         <ng-container *ngIf="isLoggedIn; else signedOut">
-          <div class="d-flex align-items-center gap-2">
-            <img [src]="userPicture || 'assets/profile.png'" alt="profile" class="rounded-circle profile-icon"/>
-            <span class="d-none d-md-inline">{{ userName }}</span>
-            <button class="btn btn-link" (click)="signOut()">Sign out</button>
+          <div class="profile-wrapper d-flex align-items-center gap-2 position-relative">
+            <button class="btn btn-outline-secondary btn-sm" (click)="toggleProfileMenu($event)">Profile</button>
+
+            <div class="profile-menu card shadow-sm" *ngIf="isProfileMenuOpen">
+              <div class="card-body p-2">
+                <div class="px-2 py-1 text-muted">Hi {{ userName || 'User' }}</div>
+                <hr class="my-2"/>
+                <button class="btn btn-link w-100 text-start px-2" (click)="signOut()">Sign out</button>
+              </div>
+            </div>
           </div>
         </ng-container>
         <ng-template #signedOut>

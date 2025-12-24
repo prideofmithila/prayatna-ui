@@ -1,5 +1,5 @@
 import { Component, AfterViewInit, OnDestroy, ViewChild, ViewChildren, QueryList, ElementRef, ChangeDetectorRef } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import Offcanvas from 'bootstrap/js/dist/offcanvas';
 import { OAuthService } from 'angular-oauth2-oidc';
@@ -33,6 +33,8 @@ export class Header implements AfterViewInit, OnDestroy {
 
   // Cache last access token so we don't repeatedly call userinfo
   private lastAccessToken: string | null = null;
+  // Profile dropdown
+  isProfileMenuOpen = false;
 
   private _offcanvasInstance: Offcanvas | null = null;
   private resizeObserver: any;
@@ -42,10 +44,10 @@ export class Header implements AfterViewInit, OnDestroy {
   @ViewChild('measureContainer', { read: ElementRef }) measureContainer!: ElementRef<HTMLElement>;
   @ViewChildren('measureItem', { read: ElementRef }) measureItems!: QueryList<ElementRef<HTMLElement>>;
 
-  constructor(private cdr: ChangeDetectorRef, private oauthService: OAuthService) {
+  constructor(private cdr: ChangeDetectorRef, private oauthService: OAuthService, private router: Router) {
     // only fetch profile when a relevant auth event occurs (token received/refreshed)
     this.oauthService.events.pipe(
-      filter((e: any) => e?.type === 'token_received' || e?.type === 'token_refreshed' || e?.type === 'session_terminated')
+      filter((e: any) => e?.type === 'token_received' || e?.type === 'token_refreshed' || e?.type === 'session_terminated' || e?.type === 'logout' || e?.type === 'token_expires')
     ).subscribe(() => {
       this.updateUserFromToken();
     });
@@ -161,11 +163,40 @@ export class Header implements AfterViewInit, OnDestroy {
 
   // Auth helpers
   signIn() {
-    this.oauthService.initCodeFlow();
+    try {
+      const returnUrl = this.router.url || '/sessions';
+      sessionStorage.setItem('returnUrl', returnUrl);
+    } catch {}
+    this.router.navigate(['/login']);
   }
 
   signOut() {
-    // clear tokens and redirect to home
-    this.oauthService.logOut();
+    // clear tokens and return to the same page
+    const returnUrl = this.router.url || '/sessions';
+    try {
+      // attempt proper revocation first
+      const fn: any = (this.oauthService as any).revokeTokenAndLogout;
+      if (typeof fn === 'function') {
+        fn.call(this.oauthService);
+      } else {
+        this.oauthService.logOut();
+      }
+    } catch {}
+
+    // force UI to reflect signed-out state immediately
+    this.isLoggedIn = false;
+    this.userName = null;
+    this.userPicture = null;
+    this.lastAccessToken = null;
+    this.isProfileMenuOpen = false;
+    this.cdr.detectChanges();
+
+    // navigate back to same page (now in signed-out state)
+    this.router.navigateByUrl(returnUrl);
+  }
+
+  toggleProfileMenu(event: Event) {
+    event.preventDefault();
+    this.isProfileMenuOpen = !this.isProfileMenuOpen;
   }
 }

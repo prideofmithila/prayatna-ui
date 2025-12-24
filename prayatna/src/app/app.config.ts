@@ -1,11 +1,11 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, APP_INITIALIZER } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { OAuthModule, OAuthService, AuthConfig } from 'angular-oauth2-oidc';
 
 import { routes } from './app.routes';
 import { environment } from '../environments/environment';
 
-export function initializeAuth(oauthService: OAuthService) {
+export function initializeAuth(oauthService: OAuthService, router: Router) {
   return () => {
     oauthService.configure(environment.authConfig);
     // Load discovery first, then override tokenEndpoint before attempting login so
@@ -15,7 +15,19 @@ export function initializeAuth(oauthService: OAuthService) {
       // automatic silent refresh uses refresh tokens if provider supports it
       oauthService.setupAutomaticSilentRefresh();
       // now attempt login (this will perform code exchange using the tokenEndpoint we set)
-      return oauthService.tryLogin();
+      return oauthService.tryLogin().then(() => {
+        // if login succeeded, navigate back to stored returnUrl
+        const hasToken = oauthService.hasValidAccessToken();
+        if (hasToken) {
+          try {
+            const returnUrl = sessionStorage.getItem('returnUrl');
+            if (returnUrl) {
+              sessionStorage.removeItem('returnUrl');
+              router.navigateByUrl(returnUrl);
+            }
+          } catch {}
+        }
+      });
     });
   };
 }
@@ -28,7 +40,7 @@ export const appConfig: ApplicationConfig = {
     {
       provide: APP_INITIALIZER,
       useFactory: initializeAuth,
-      deps: [OAuthService],
+      deps: [OAuthService, Router],
       multi: true,
     }
   ]
