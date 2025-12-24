@@ -205,6 +205,10 @@
 
 /* Responsive adjustments */
 @media (max-width: 576px) {
+  .login-container {
+    align-items: flex-start;
+    padding-top: 25px;
+  }
   .login-card {
     padding: 32px 24px;
   }

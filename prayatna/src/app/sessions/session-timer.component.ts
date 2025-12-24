@@ -33,6 +33,14 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
   private previousSessionWarning = false;
   private previousTaskWarning = false;
   private alarmTimeout: any = null;
+  // Wake Lock state
+  private wakeLock: any = null;
+  private visibilityHandler = () => {
+    // Re-acquire wake lock when the page becomes visible and timer is running
+    if (document.visibilityState === 'visible' && this.isRunning) {
+      this.requestWakeLock();
+    }
+  };
 
   constructor(
     private route: ActivatedRoute,
@@ -51,6 +59,11 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
     
     // Initialize alarm audio (play for 5 seconds only)
     this.alarmAudio = new Audio('prayatna-alarm.mp3');
+
+    // Listen for visibility changes to re-acquire wake lock when needed
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
   }
 
   ngOnDestroy() {
@@ -58,6 +71,11 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
     if (this.alarmAudio) {
       this.alarmAudio.pause();
       this.alarmAudio = null;
+    }
+    // Cleanup wake lock and listeners
+    this.releaseWakeLock();
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
     }
   }
 
@@ -124,12 +142,15 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
     }
     
     this.stopAlarm();
+    this.releaseWakeLock();
   }
 
   startTimer() {
     if (this.isRunning) return;
     
     this.isRunning = true;
+    // Keep device screen awake while timer is running
+    this.requestWakeLock();
     
     // Determine if we should countdown or count up
     const hasSessionDuration = this.session && (this.session.totalDuration || 0) > 0;
@@ -249,6 +270,7 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
     this.stopAlarm();
     this.previousSessionWarning = false;
     this.previousTaskWarning = false;
+    this.releaseWakeLock();
     
     // Reset all timers to default values
     this.sessionElapsedSeconds = this.session?.totalDuration || 0;
@@ -353,6 +375,37 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
       this.alarmTimeout = null;
     }
   }
+
+  private async requestWakeLock() {
+    try {
+      const wl = (navigator as any)?.wakeLock;
+      if (!wl || typeof wl.request !== 'function') {
+        return; // not supported
+      }
+      // Only request if not already held
+      if (!this.wakeLock) {
+        this.wakeLock = await wl.request('screen');
+        // If the lock is released by the UA (e.g., tab hidden), try to re-acquire when visible
+        this.wakeLock.addEventListener?.('release', () => {
+          this.wakeLock = null;
+        });
+      }
+    } catch (err) {
+      // Ignore errors silently; wake lock may require user interaction
+      console.debug('Wake Lock request failed', err);
+      this.wakeLock = null;
+    }
+  }
+
+  private async releaseWakeLock() {
+    try {
+      if (this.wakeLock && typeof this.wakeLock.release === 'function') {
+        await this.wakeLock.release();
+      }
+    } catch {}
+    this.wakeLock = null;
+  }
+
 
   isSessionTimerNegative(): boolean {
     const hasSessionDuration = this.session && (this.session.totalDuration || 0) > 0;
