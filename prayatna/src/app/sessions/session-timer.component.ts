@@ -24,10 +24,15 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
   
   selectedTaskIndex: number | null = null;
   currentSubtaskIndex: number = 0;
+  showTaskSelectionModal = false;
   
   private sessionTimerInterval: any;
   private taskTimerInterval: any;
   private subtaskTimerInterval: any;
+  private alarmAudio: HTMLAudioElement | null = null;
+  private previousSessionWarning = false;
+  private previousTaskWarning = false;
+  private alarmTimeout: any = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -43,10 +48,17 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
       this.sessionIndex = parseInt(id, 10);
       this.loadSession();
     }
+    
+    // Initialize alarm audio (play for 5 seconds only)
+    this.alarmAudio = new Audio('prayatna-alarm.mp3');
   }
 
   ngOnDestroy() {
     this.stopTimer();
+    if (this.alarmAudio) {
+      this.alarmAudio.pause();
+      this.alarmAudio = null;
+    }
   }
 
   loadSession() {
@@ -59,10 +71,13 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
   }
 
   formatTime(seconds: number): string {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    const isNegative = seconds < 0;
+    const absSeconds = Math.abs(seconds);
+    const h = Math.floor(absSeconds / 3600);
+    const m = Math.floor((absSeconds % 3600) / 60);
+    const s = absSeconds % 60;
+    const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    return isNegative ? `-${timeStr}` : timeStr;
   }
 
   formatDuration(seconds: number): string {
@@ -73,15 +88,21 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
   }
 
   togglePlayPause() {
-    if (this.selectedTaskIndex === null) {
-      alert('Please select a task to start the session.');
+    // If session has tasks, require a task to be selected
+    if (this.session && this.session.tasks && this.session.tasks.length > 0 && this.selectedTaskIndex === null) {
+      this.showTaskSelectionModal = true;
       return;
     }
+    
     if (this.isRunning) {
       this.pauseTimer();
     } else {
       this.startTimer();
     }
+  }
+
+  closeModal() {
+    this.showTaskSelectionModal = false;
   }
 
   pauseTimer() {
@@ -101,6 +122,8 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
       clearInterval(this.subtaskTimerInterval);
       this.subtaskTimerInterval = null;
     }
+    
+    this.stopAlarm();
   }
 
   startTimer() {
@@ -118,9 +141,7 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
       this.ngZone.run(() => {
         // Update session timer
         if (hasSessionDuration) {
-          if (this.sessionElapsedSeconds > 0) {
-            this.sessionElapsedSeconds--;
-          }
+          this.sessionElapsedSeconds--;
         } else {
           this.sessionElapsedSeconds++;
         }
@@ -130,7 +151,7 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
           if (hasTaskDuration) {
             // Update subtask timer
             if (selectedTask.hasSubtasks && selectedTask.subtasks) {
-              // Decrement subtask timer
+              // Decrement subtask timer (but keep at 0, don't go negative)
               if (this.subtaskElapsedSeconds > 0) {
                 this.subtaskElapsedSeconds--;
               }
@@ -144,15 +165,20 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
               
               // Calculate task elapsed seconds based on remaining subtasks
               // Task time = current subtask remaining + all future subtasks
-              this.taskElapsedSeconds = this.subtaskElapsedSeconds;
-              for (let i = this.currentSubtaskIndex + 1; i < selectedTask.subtasks.length; i++) {
-                this.taskElapsedSeconds += selectedTask.subtasks[i].duration;
+              // But if all subtasks are done (current is last and at 0), decrement task timer into negative
+              if (this.subtaskElapsedSeconds === 0 && this.currentSubtaskIndex === selectedTask.subtasks.length - 1) {
+                // All subtasks complete, let task timer go negative
+                this.taskElapsedSeconds--;
+              } else {
+                // Still have subtasks remaining, calculate from subtasks
+                this.taskElapsedSeconds = this.subtaskElapsedSeconds;
+                for (let i = this.currentSubtaskIndex + 1; i < selectedTask.subtasks.length; i++) {
+                  this.taskElapsedSeconds += selectedTask.subtasks[i].duration;
+                }
               }
             } else {
               // No subtasks, count down task timer directly
-              if (this.taskElapsedSeconds > 0) {
-                this.taskElapsedSeconds--;
-              }
+              this.taskElapsedSeconds--;
             }
           } else {
             this.taskElapsedSeconds++;
@@ -160,6 +186,9 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
         }
         
         this.cdr.detectChanges();
+        
+        // Check if we should play alarm
+        this.checkAlarmState();
       });
     }, 1000);
   }
@@ -216,6 +245,11 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
       this.subtaskTimerInterval = null;
     }
     
+    // Stop alarm and reset warning states
+    this.stopAlarm();
+    this.previousSessionWarning = false;
+    this.previousTaskWarning = false;
+    
     // Reset all timers to default values
     this.sessionElapsedSeconds = this.session?.totalDuration || 0;
     
@@ -235,6 +269,13 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
   }
 
   selectTask(index: number) {
+    const wasRunning = this.isRunning;
+    
+    // If timer is running, pause it first
+    if (wasRunning) {
+      this.pauseTimer();
+    }
+    
     this.selectedTaskIndex = index;
     
     // Always initialize task and subtask durations immediately when task is selected
@@ -248,25 +289,9 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     }
     
-    // If timer is running, restart with new task
-    if (this.isRunning) {
-      // Stop current task timer
-      if (this.taskTimerInterval) {
-        clearInterval(this.taskTimerInterval);
-        this.taskTimerInterval = null;
-      }
-      
-      const hasTaskDuration = selectedTask && this.getTaskDuration(selectedTask) > 0;
-      
-      // Start new task timer
-      this.taskTimerInterval = setInterval(() => {
-        if (hasTaskDuration) {
-          if (this.taskElapsedSeconds > 0) this.taskElapsedSeconds--;
-          this.updateSubtaskTimer();
-        } else {
-          this.taskElapsedSeconds++;
-        }
-      }, 1000);
+    // If timer was running, restart with new task
+    if (wasRunning) {
+      this.startTimer();
     }
   }
 
@@ -286,5 +311,64 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
       return task.subtasks.reduce((sum, st) => sum + st.duration, 0);
     }
     return task.taskDuration || 0;
+  }
+
+  private checkAlarmState(): void {
+    const sessionWarning = this.isSessionTimerNegative();
+    const taskWarning = this.isTaskTimerNegative();
+    const shouldPlayAlarm = sessionWarning || taskWarning;
+    
+    // Start alarm if entering warning state
+    if (shouldPlayAlarm && !this.previousSessionWarning && !this.previousTaskWarning) {
+      this.playAlarm();
+    }
+    // Stop alarm if leaving warning state
+    else if (!shouldPlayAlarm && (this.previousSessionWarning || this.previousTaskWarning)) {
+      this.stopAlarm();
+    }
+    
+    this.previousSessionWarning = sessionWarning;
+    this.previousTaskWarning = taskWarning;
+  }
+  
+  private playAlarm(): void {
+    if (this.alarmAudio && this.isRunning) {
+      this.alarmAudio.currentTime = 0;
+      this.alarmAudio.play().catch(err => console.log('Audio play failed:', err));
+      
+      // Stop audio after 5 seconds
+      this.alarmTimeout = setTimeout(() => {
+        this.stopAlarm();
+      }, 5000);
+    }
+  }
+  
+  private stopAlarm(): void {
+    if (this.alarmAudio) {
+      this.alarmAudio.pause();
+      this.alarmAudio.currentTime = 0;
+    }
+    if (this.alarmTimeout) {
+      clearTimeout(this.alarmTimeout);
+      this.alarmTimeout = null;
+    }
+  }
+
+  isSessionTimerNegative(): boolean {
+    const hasSessionDuration = this.session && (this.session.totalDuration || 0) > 0;
+    // For countdown timers, warn when <= 3 seconds and timer is running; for countup, never warn
+    return !!hasSessionDuration && this.sessionElapsedSeconds <= 3 && this.isRunning;
+  }
+
+  isTaskTimerNegative(): boolean {
+    if (this.selectedTaskIndex === null) return false;
+    const selectedTask = this.session?.tasks[this.selectedTaskIndex];
+    const hasTaskDuration = selectedTask && this.getTaskDuration(selectedTask) > 0;
+    // For countdown timers, warn when <= 3 seconds and timer is running; for countup, never warn
+    return !!hasTaskDuration && this.taskElapsedSeconds <= 3 && this.isRunning;
+  }
+
+  isSubtaskTimerNegative(): boolean {
+    return this.subtaskElapsedSeconds < 0;
   }
 }

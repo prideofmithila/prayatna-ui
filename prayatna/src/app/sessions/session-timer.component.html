@@ -1,30 +1,28 @@
 <div class="session-timer-page container mt-2 pb-3">
   <!-- Session Timer Card -->
-  <div class="timer-card session-timer-card mb-3">
-    <div class="timer-header d-flex justify-content-between align-items-center mb-2">
+  <div class="timer-card session-timer-card mb-3" [class.session-only]="!session || session.tasks.length === 0">
+    <div class="timer-header d-flex justify-content-between align-items-center mb-2" [class.mb-4]="!session || session.tasks.length === 0">
       <button 
-        class="btn btn-link p-0" 
-        [class.text-secondary]="selectedTaskIndex === null"
-        [class.text-primary]="selectedTaskIndex !== null"
+        class="btn btn-link p-0 text-primary" 
         (click)="togglePlayPause()">
-        <span class="material-icons" style="font-size: 36px;" [class.opacity-50]="selectedTaskIndex === null">{{ isRunning ? 'pause' : 'play_arrow' }}</span>
+        <span class="material-icons" [style.font-size]="(!session || session.tasks.length === 0) ? '48px' : '36px'">{{ isRunning ? 'pause' : 'play_arrow' }}</span>
       </button>
-      <span class="timer-title flex-grow-1 text-center">Session Timer</span>
+      <span class="timer-title flex-grow-1 text-center" [style.font-size]="(!session || session.tasks.length === 0) ? '1.8rem' : '1.5rem'">Session Timer</span>
       <button class="btn btn-link p-0" (click)="isRunning ? stopTimer() : null" [class.opacity-50]="!isRunning">
-        <span class="material-icons text-danger" style="font-size: 32px;">stop</span>
+        <span class="material-icons text-danger" [style.font-size]="(!session || session.tasks.length === 0) ? '44px' : '32px'">stop</span>
       </button>
     </div>
-    <div class="timer-display session-timer-display">
+    <div class="timer-display session-timer-display" [class.timer-negative]="isSessionTimerNegative()" [class.session-only-timer]="!session || session.tasks.length === 0">
       {{ formatTime(sessionElapsedSeconds) }}
     </div>
   </div>
 
   <!-- Task Selection Card -->
-  <div class="timer-card task-selection-card mb-3">
+  <div *ngIf="session && session.tasks && session.tasks.length > 0" class="timer-card task-selection-card mb-3">
     <div class="task-selection-title mb-4">Current Task: {{ getSelectedTaskName() }}</div>
     
     <!-- Task Duration Info (always show when task is selected) -->
-    <div class="timer-display task-timer-display mb-3 mt-3">
+    <div class="timer-display task-timer-display mb-3 mt-3" [class.timer-negative]="isTaskTimerNegative()">
       {{ formatTime(taskElapsedSeconds) }}
     </div>
     
@@ -47,10 +45,10 @@
   </div>
 
   <!-- Instruction Text -->
-  <p class="text-center text-muted mb-2">Select to start or switch between tasks</p>
+  <p *ngIf="session && session.tasks && session.tasks.length > 0" class="text-center text-muted mb-2">Select to start or switch between tasks</p>
 
   <!-- Task List -->
-  <div class="row g-2" *ngIf="session">
+  <div class="row g-2" *ngIf="session && session.tasks && session.tasks.length > 0">
     <div class="col-6" *ngFor="let task of session.tasks; let i = index">
       <div 
         class="task-select-card" 
@@ -63,8 +61,26 @@
   </div>
 
   <!-- No Tasks Message -->
-  <div *ngIf="!session || session.tasks.length === 0" class="text-center text-muted py-4">
-    <p>No tasks available in this session.</p>
-    <button class="btn btn-primary" (click)="goBack()">Go Back</button>
+  <div *ngIf="!session || session.tasks.length === 0" class="text-center text-muted py-5">
+    <p class="mb-0">No tasks in this session. Use the session timer above to track your time.</p>
   </div>
+
+  <!-- Task Selection Required Modal -->
+  <div class="modal fade" [class.show]="showTaskSelectionModal" [style.display]="showTaskSelectionModal ? 'block' : 'none'" tabindex="-1" *ngIf="showTaskSelectionModal">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0">
+          <h5 class="modal-title">Task Selection Required</h5>
+          <button type="button" class="btn-close" (click)="closeModal()"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-0">Please select a task from the list below to start the session timer.</p>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-primary" (click)="closeModal()">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop fade" [class.show]="showTaskSelectionModal" *ngIf="showTaskSelectionModal" (click)="closeModal()"></div>
 </div>

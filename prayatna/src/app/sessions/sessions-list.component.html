@@ -41,3 +41,14 @@
 
   <button class="fab d-inline-flex d-md-none" title="New session" (click)="createNew()">+</button>
 </div>
+<!-- Delete Session Modal -->
+<div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
+  <div class="modal-card small" (click)="$event.stopPropagation()">
+    <h5>Confirm Delete</h5>
+    <p>Are you sure you want to delete this session? This action cannot be undone.</p>
+    <div class="d-flex gap-2 justify-content-end mt-3">
+      <button type="button" class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
+      <button type="button" class="btn btn-danger" (click)="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>

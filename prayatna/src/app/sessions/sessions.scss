@@ -162,10 +162,37 @@
   font-weight: 700;
   text-align: center;
   letter-spacing: 2px;
+  transition: color 0.3s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.timer-negative {
+  color: #dc3545 !important;
+  animation: shake 0.5s ease-in-out infinite;
 }
 
 .session-timer-display {
   color: #1c6fda;
+}
+
+.session-only {
+  padding: 32px 24px !important;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.session-only-timer {
+  font-size: 6rem !important;
+  letter-spacing: 4px;
+  margin-top: 24px;
+  margin-bottom: 24px;
 }
 
 .task-selection-card {
@@ -290,4 +317,65 @@
   font-size: 0.95rem;
   font-weight: 700;
   color: #1c6fda;
+}
+
+/* Responsive timer adjustments for mobile devices */
+@media (max-width: 576px) {
+  .session-timer-page {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .timer-card {
+    padding: 16px;
+  }
+
+  .timer-display {
+    font-size: 2rem;
+    letter-spacing: 1px;
+    overflow-wrap: break-word;
+    word-break: break-all;
+  }
+
+  .session-only-timer {
+    font-size: 3.5rem !important;
+    letter-spacing: 2px;
+    margin-top: 16px;
+    margin-bottom: 16px;
+  }
+
+  .task-timer-display {
+    font-size: 2.5rem !important;
+  }
+
+  .subtask-timer-display {
+    font-size: 3rem !important;
+  }
+
+  .timer-header {
+    .timer-title {
+      font-size: 1.2rem;
+    }
+  }
+
+  .task-selection-title {
+    font-size: 1.1rem;
+  }
+
+  /* Ensure negative timers don't overflow */
+  .timer-negative {
+    font-size: 1.8rem !important;
+  }
+
+  .session-only-timer.timer-negative {
+    font-size: 3rem !important;
+  }
+
+  .task-timer-display.timer-negative {
+    font-size: 2rem !important;
+  }
+
+  .subtask-timer-display.timer-negative {
+    font-size: 2.5rem !important;
+  }
 }
