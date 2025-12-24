@@ -15,6 +15,8 @@ import { Session } from './session.model';
 export class SessionsListComponent {
   sessions: Session[] = [];
   searchTerm = '';
+  showDeleteModal = false;
+  sessionToDelete: number | null = null;
 
   constructor(private sessionsService: SessionsService, private router: Router) {
     this.sessions = this.sessionsService.load();
@@ -59,8 +61,21 @@ export class SessionsListComponent {
   }
 
   delete(i: number) {
-    if (!confirm('Delete session?')) return;
-    this.sessions.splice(i, 1);
-    this.sessionsService.save(this.sessions);
+    this.sessionToDelete = i;
+    this.showDeleteModal = true;
+  }
+  
+  confirmDelete() {
+    if(this.sessionToDelete !== null) {
+      this.sessions.splice(this.sessionToDelete, 1);
+      this.sessionsService.save(this.sessions);
+      this.sessionToDelete = null;
+    }
+    this.showDeleteModal = false;
+  }
+  
+  cancelDelete() {
+    this.showDeleteModal = false;
+    this.sessionToDelete = null;
   }
 }

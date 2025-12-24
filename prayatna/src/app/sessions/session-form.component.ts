@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormArray, FormBuilder, FormGroup, FormControl, Validators, AbstractControl } from '@angular/forms';
 import { PortalDirective } from '../shared/portal.directive';
@@ -23,17 +23,26 @@ export class SessionFormComponent implements OnInit {
   subtaskModalOpen = false;
   editingTaskIndex: number | null = null;
   editingSubtaskIndex: number | null = null;
+  showDeleteSessionModal = false;
+  showDeleteTaskModal = false;
+  taskToDelete: number | null = null;
+  private reopenTaskModalAfterSubtask = false;
 
   taskModalForm: FormGroup;
   subtaskModalForm: FormGroup;
 
+  // Error tracking
+  taskModalErrors: { [key: string]: string } = {};
+  subtaskModalErrors: { [key: string]: string } = {};
+  sessionFormErrors: { [key: string]: string } = {};
+
   @ViewChild('sessionNameInput') sessionNameInput!: ElementRef<HTMLInputElement>;
 
-  constructor(private sessionsService: SessionsService, private fb: FormBuilder, private router: Router, private route: ActivatedRoute) {
+  constructor(private sessionsService: SessionsService, private fb: FormBuilder, private router: Router, private route: ActivatedRoute, private cdr: ChangeDetectorRef) {
     this.sessions = this.sessionsService.load();
 
     this.form = this.fb.group({
-      sessionName: [''],
+      sessionName: ['', [Validators.required, Validators.minLength(1)]],
       isTimed: [true],
       totalDuration: [0],
       durationHours: [0],
@@ -43,7 +52,7 @@ export class SessionFormComponent implements OnInit {
     });
 
     this.taskModalForm = this.fb.group({
-      taskName: ['', Validators.required],
+      taskName: ['', [Validators.required, Validators.minLength(1)]],
       hasSubtasks: [false],
       taskDuration: [0],
       durationHours: [0],
@@ -53,8 +62,8 @@ export class SessionFormComponent implements OnInit {
     });
 
     this.subtaskModalForm = this.fb.group({
-      subtaskName: ['', Validators.required],
-      duration: [0, [Validators.min(0)]],
+      subtaskName: ['', [Validators.required, Validators.minLength(1)]],
+      duration: [0],
       durationHours: [0],
       durationMinutes: [0],
       durationSeconds: [0]
@@ -129,11 +138,56 @@ export class SessionFormComponent implements OnInit {
     setTimeout(()=>{ try { this.sessionNameInput?.nativeElement?.focus(); } catch {} }, 0);
   }
 
-  closeTaskModal() { this.taskModalOpen = false; this.editingTaskIndex = null; const ms = this.taskModalForm.get('subtasks') as FormArray; while(ms.length) ms.removeAt(0); }
+  closeTaskModal() { 
+    this.taskModalOpen = false; 
+    this.editingTaskIndex = null; 
+    const ms = this.taskModalForm.get('subtasks') as FormArray; 
+    while(ms.length) ms.removeAt(0); 
+    this.taskModalErrors = {};
+  }
 
   saveTaskModal() {
+    this.taskModalErrors = {};
     const hasSub = !!this.taskModalForm.get('hasSubtasks')?.value;
-    if (hasSub && this.taskModalSubtasks.length === 0) { alert('Please add at least one subtask'); return; }
+    if (hasSub && this.taskModalSubtasks.length === 0) { 
+      this.taskModalErrors['subtasks'] = 'Please add at least one subtask'; 
+      return; 
+    }
+    
+    // Validate task name
+    const taskNameCtrl = this.taskModalForm.get('taskName');
+    if (!taskNameCtrl?.value?.trim()) { 
+      this.taskModalErrors['taskName'] = 'Task name is required'; 
+      return; 
+    }
+    
+    // Validate duration for non-subtask tasks
+    if (!hasSub) {
+      const h = Number(this.taskModalForm.get('durationHours')?.value || 0);
+      const m = Number(this.taskModalForm.get('durationMinutes')?.value || 0);
+      const s = Number(this.taskModalForm.get('durationSeconds')?.value || 0);
+      const totalDur = h * 3600 + m * 60 + s;
+      if (totalDur === 0) { 
+        this.taskModalErrors['duration'] = 'Duration is required for tasks without subtasks'; 
+        return; 
+      }
+    }
+    
+    // Validate all subtasks have names and durations
+    for (let i = 0; i < this.taskModalSubtasks.length; i++) {
+      const st = this.taskModalSubtasks.at(i);
+      const stName = st.get('subtaskName')?.value;
+      const stDur = Number(st.get('duration')?.value || 0);
+      if (!stName?.trim()) { 
+        this.taskModalErrors[`subtask_${i}_name`] = `Subtask ${i + 1}: Name is required`; 
+        return; 
+      }
+      if (stDur === 0) { 
+        this.taskModalErrors[`subtask_${i}_duration`] = `Subtask ${i + 1}: Duration is required`; 
+        return; 
+      }
+    }
+    
     if (this.taskModalForm.invalid) return;
     const val = this.taskModalForm.value as any;
     let computedDuration = 0;
@@ -154,29 +208,58 @@ export class SessionFormComponent implements OnInit {
   }
 
   get taskModalSubtasks(): FormArray<FormGroup> { return this.taskModalForm.get('subtasks') as FormArray<FormGroup>; }
-  openSubtaskModal(index?: number) { 
-    this.editingSubtaskIndex = typeof index === 'number' ? index : null; 
-    const sa = this.taskModalSubtasks; 
-    if (this.editingSubtaskIndex !== null){ 
-      const st = sa.at(this.editingSubtaskIndex).value as any; 
+  openSubtaskModal(index?: number) {
+    this.editingSubtaskIndex = typeof index === 'number' ? index : null;
+    const sa = this.taskModalSubtasks;
+    if (this.editingSubtaskIndex !== null) {
+      const st = sa.at(this.editingSubtaskIndex).value as any;
       const dur = st.duration || 0;
       const h = Math.floor(dur / 3600);
       const m = Math.floor((dur % 3600) / 60);
       const s = dur % 60;
-      this.subtaskModalForm.patchValue({ subtaskName: st.subtaskName, duration: st.duration, durationHours: h, durationMinutes: m, durationSeconds: s }); 
-    } else { 
-      this.subtaskModalForm.reset({ subtaskName:'', duration:0, durationHours: 0, durationMinutes: 0, durationSeconds: 0 }); 
-    } 
-    this.subtaskModalOpen = true; 
+      this.subtaskModalForm.patchValue({ subtaskName: st.subtaskName, duration: st.duration, durationHours: h, durationMinutes: m, durationSeconds: s });
+    } else {
+      this.subtaskModalForm.reset({ subtaskName: '', duration: 0, durationHours: 0, durationMinutes: 0, durationSeconds: 0 });
+    }
+    this.reopenTaskModalAfterSubtask = this.taskModalOpen;
+    this.taskModalOpen = false;
+    setTimeout(() => {
+      this.subtaskModalOpen = true;
+      this.cdr.detectChanges();
+    }, 0);
   }
-  closeSubtaskModal() { this.subtaskModalOpen = false; this.editingSubtaskIndex = null; this.subtaskModalForm.reset({ subtaskName:'', duration:0, durationHours: 0, durationMinutes: 0, durationSeconds: 0 }); }
+  closeSubtaskModal() {
+    this.subtaskModalOpen = false;
+    this.editingSubtaskIndex = null;
+    this.subtaskModalForm.reset({ subtaskName: '', duration: 0, durationHours: 0, durationMinutes: 0, durationSeconds: 0 });
+    this.subtaskModalErrors = {};
+    if (this.reopenTaskModalAfterSubtask) {
+      setTimeout(() => {
+        this.taskModalOpen = true;
+        this.cdr.detectChanges();
+      }, 0);
+    }
+    this.reopenTaskModalAfterSubtask = false;
+  }
   saveSubtaskModal(){ 
+    this.subtaskModalErrors = {};
+    const stName = this.subtaskModalForm.get('subtaskName')?.value;
+    if (!stName?.trim()) { 
+      this.subtaskModalErrors['subtaskName'] = 'Subtask name is required'; 
+      return; 
+    }
+    
+    const h = Number(this.subtaskModalForm.get('durationHours')?.value || 0);
+    const m = Number(this.subtaskModalForm.get('durationMinutes')?.value || 0);
+    const s = Number(this.subtaskModalForm.get('durationSeconds')?.value || 0);
+    const totalDuration = h * 3600 + m * 60 + s;
+    if (totalDuration === 0) { 
+      this.subtaskModalErrors['duration'] = 'Subtask duration is required'; 
+      return; 
+    }
+    
     if(this.subtaskModalForm.invalid) return; 
     const val = this.subtaskModalForm.value as any; 
-    const h = Number(val.durationHours) || 0;
-    const m = Number(val.durationMinutes) || 0;
-    const s = Number(val.durationSeconds) || 0;
-    const totalDuration = h * 3600 + m * 60 + s;
     const sa = this.taskModalSubtasks; 
     if(this.editingSubtaskIndex===null) 
       sa.push(this.fb.group({ subtaskName:[val.subtaskName], duration:[totalDuration] })); 
@@ -206,7 +289,31 @@ export class SessionFormComponent implements OnInit {
   
   loadForEdit(idx:number){ const s=this.sessions[idx]; this.editingIndex=idx; const total=s.totalDuration||0; const h=Math.floor(total/3600); const m=Math.floor((total%3600)/60); const sec=total%60; this.form.patchValue({ sessionName: s.sessionName, isTimed: s.isTimed, totalDuration: s.totalDuration||0, durationHours:h, durationMinutes:m, durationSeconds:sec }); while(this.tasks.length) this.tasks.removeAt(0); s.tasks.forEach(t=>this.addTask(t)); }
 
-  save(){ const value=this.form.value as any; const hours=Number(value.durationHours)||0; const minutes=Number(value.durationMinutes)||0; const seconds=Number(value.durationSeconds)||0; const computedTotal=hours*3600+minutes*60+seconds; const session:Session={ sessionName:value.sessionName, isTimed:!!value.isTimed, totalDuration: computedTotal>0?computedTotal:(Number(value.totalDuration)||0), tasks:(value.tasks||[]).map((t:any)=>({ taskName:t.taskName, hasSubtasks:!!t.hasSubtasks, taskDuration:Number(t.taskDuration)||0, subtasks:(t.subtasks||[]).map((st:any)=>({ subtaskName:st.subtaskName, duration:Number(st.duration)||0 })) })) };
+  save(){ 
+    this.sessionFormErrors = {};
+    // Validate session name
+    const sessionNameVal = this.form.get('sessionName')?.value;
+    if (!sessionNameVal?.trim()) { 
+      this.sessionFormErrors['sessionName'] = 'Session name is required'; 
+      return; 
+    }
+    
+    const value=this.form.value as any; 
+    const hours=Number(value.durationHours)||0; 
+    const minutes=Number(value.durationMinutes)||0; 
+    const seconds=Number(value.durationSeconds)||0; 
+    const computedTotal=hours*3600+minutes*60+seconds; 
+    const session:Session={ 
+      sessionName:value.sessionName, 
+      isTimed:!!value.isTimed, 
+      totalDuration: computedTotal>0?computedTotal:(Number(value.totalDuration)||0), 
+      tasks:(value.tasks||[]).map((t:any)=>({ 
+        taskName:t.taskName, 
+        hasSubtasks:!!t.hasSubtasks, 
+        taskDuration:Number(t.taskDuration)||0, 
+        subtasks:(t.subtasks||[]).map((st:any)=>({ subtaskName:st.subtaskName, duration:Number(st.duration)||0 })) 
+      })) 
+    };
 
     if(this.editingIndex===null){ this.sessions.push(session); } else { this.sessions[this.editingIndex]=session; }
 
@@ -217,7 +324,50 @@ export class SessionFormComponent implements OnInit {
   cancel(){ this.router.navigate(['/sessions']); }
 
   goToEdit(){ if(this.editingIndex===null) return; this.router.navigate(['/sessions', this.editingIndex, 'edit']); }
-  deleteCurrent(){ if(this.editingIndex===null) return; if(!confirm('Delete session?')) return; this.sessions.splice(this.editingIndex,1); this.sessionsService.save(this.sessions); this.router.navigate(['/sessions']); }
+  deleteCurrent(){ 
+    if(this.editingIndex===null) return; 
+    this.taskModalOpen = false;
+    this.subtaskModalOpen = false;
+    setTimeout(()=>{ 
+      this.showDeleteSessionModal = true;
+      this.cdr.detectChanges(); 
+    }, 0);
+  }
+  
+  confirmDeleteSession() {
+    if(this.editingIndex===null) return;
+    this.sessions.splice(this.editingIndex,1); 
+    this.sessionsService.save(this.sessions); 
+    this.showDeleteSessionModal = false;
+    this.router.navigate(['/sessions']);
+  }
+  
+  cancelDeleteSession() {
+    this.showDeleteSessionModal = false;
+  }
+  
+  deleteTask(index: number) {
+    this.taskToDelete = index;
+    this.taskModalOpen = false;
+    this.subtaskModalOpen = false;
+    setTimeout(()=>{ 
+      this.showDeleteTaskModal = true;
+      this.cdr.detectChanges(); 
+    }, 0);
+  }
+  
+  confirmDeleteTask() {
+    if(this.taskToDelete !== null) {
+      this.tasks.removeAt(this.taskToDelete);
+      this.taskToDelete = null;
+    }
+    this.showDeleteTaskModal = false;
+  }
+  
+  cancelDeleteTask() {
+    this.showDeleteTaskModal = false;
+    this.taskToDelete = null;
+  }
   playSession(){ 
     if (this.editingIndex !== null) {
       this.router.navigate(['/sessions', this.editingIndex, 'timer']);
