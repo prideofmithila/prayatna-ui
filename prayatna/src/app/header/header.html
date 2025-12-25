@@ -20,9 +20,9 @@
       <!-- Center: Links (desktop only) -->
       <div class="flex-grow-1 d-none d-md-flex justify-content-center position-relative">
         <ul class="nav header-nav" #centerNav>
-          <li class="nav-item" *ngFor="let link of links | slice:0:visibleCount; let i = index" [class.position-relative]="link.label === 'Daily Quiz' || link.label === 'Practice Tool'">
+          <li class="nav-item" *ngFor="let link of links | slice:0:visibleCount; let i = index" [class.position-relative]="link.label === 'Daily Quiz' || link.label === 'Practice Tool' || link.label === 'Social'">
             <!-- Regular links -->
-            <a class="nav-link" *ngIf="link.label !== 'Daily Quiz' && link.label !== 'Practice Tool'" [routerLink]="link.route" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ link.label }}</a>
+            <a class="nav-link" *ngIf="link.label !== 'Daily Quiz' && link.label !== 'Practice Tool' && link.label !== 'Social'" [routerLink]="link.route" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ link.label }}</a>
 
             <!-- Daily Quiz dropdown (coming soon) -->
             <a class="nav-link has-icon" href="#" *ngIf="link.label === 'Daily Quiz'" (click)="toggleQuizDropdown($event)" [class.active]="showQuizDropdown">
@@ -47,6 +47,27 @@
                     <span class="material-icons me-2" style="font-size:18px;vertical-align:middle;">timer</span>
                     Session Timer
                   </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Social dropdown -->
+            <a class="nav-link has-icon" href="#" *ngIf="link.label === 'Social'" (click)="toggleSocialDropdown($event)" [class.active]="showSocialDropdown">
+              <span class="material-icons nav-icon">share</span>
+              <span>Social</span>
+            </a>
+            <div class="quiz-menu card" *ngIf="link.label === 'Social' && showSocialDropdown" (click)="$event.stopPropagation()">
+              <div class="card-body py-2 px-3">
+                <div class="d-flex gap-3 justify-content-center">
+                  <a href="https://www.youtube.com" target="_blank" title="YouTube" aria-label="YouTube" class="social-icon-link">
+                    <i class="bi bi-youtube"></i>
+                  </a>
+                  <a href="https://t.me" target="_blank" title="Telegram" aria-label="Telegram" class="social-icon-link">
+                    <i class="bi bi-telegram"></i>
+                  </a>
+                  <a href="https://wa.me" target="_blank" title="WhatsApp" aria-label="WhatsApp" class="social-icon-link">
+                    <i class="bi bi-whatsapp"></i>
+                  </a>
                 </div>
               </div>
             </div>
@@ -149,6 +170,27 @@
                 <span class="material-icons" style="font-size:18px;">timer</span>
                 <span>Session Timer</span>
               </a>
+            </div>
+          </div>
+
+          <div *ngIf="link.label === 'Social'" class="w-100">
+            <button class="btn w-100 nav-link text-start nav-row" (click)="toggleMobileSocial($event)">
+              <span class="nav-icon-col"><span class="material-icons nav-icon">share</span></span>
+              <span class="nav-text">Social</span>
+              <span class="nav-caret material-icons">{{ mobileSocialOpen ? 'expand_less' : 'expand_more' }}</span>
+            </button>
+            <div class="ps-4" *ngIf="mobileSocialOpen">
+              <div class="d-flex gap-3 py-2 rounded-2 bg-light px-3">
+                <a href="https://www.youtube.com" target="_blank" title="YouTube" aria-label="YouTube" class="social-icon-link">
+                  <i class="bi bi-youtube"></i>
+                </a>
+                <a href="https://t.me" target="_blank" title="Telegram" aria-label="Telegram" class="social-icon-link">
+                  <i class="bi bi-telegram"></i>
+                </a>
+                <a href="https://wa.me" target="_blank" title="WhatsApp" aria-label="WhatsApp" class="social-icon-link">
+                  <i class="bi bi-whatsapp"></i>
+                </a>
+              </div>
             </div>
           </div>
         </li>

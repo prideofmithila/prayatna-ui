@@ -17,6 +17,7 @@ export class Header implements AfterViewInit, OnDestroy {
     { label: 'Home', route: '/' },
     { label: 'Practice Tool', route: null },
     { label: 'Daily Quiz', route: null },
+    { label: 'Social', route: null },
     { label: 'About', route: '/about' }
   ];
 
@@ -37,6 +38,8 @@ export class Header implements AfterViewInit, OnDestroy {
   isProfileMenuOpen = false;
   showQuizDropdown = false;
   showPracticeDropdown = false;
+  showSocialDropdown = false;
+  mobileSocialOpen = false;
 
   private _offcanvasInstance: Offcanvas | null = null;
   private resizeObserver: any;
@@ -130,6 +133,7 @@ export class Header implements AfterViewInit, OnDestroy {
     let dirty = false;
     if (this.showQuizDropdown) { this.showQuizDropdown = false; dirty = true; }
     if (this.showPracticeDropdown) { this.showPracticeDropdown = false; dirty = true; }
+    if (this.showSocialDropdown) { this.showSocialDropdown = false; dirty = true; }
     if (this.isProfileMenuOpen) { this.isProfileMenuOpen = false; dirty = true; }
     if (dirty) this.cdr.detectChanges();
   }
@@ -223,6 +227,7 @@ export class Header implements AfterViewInit, OnDestroy {
     this._offcanvasInstance?.hide();
     this.mobileQuizOpen = false;
     this.mobilePracticeOpen = false;
+    this.mobileSocialOpen = false;
   }
 
   // Auth helpers
@@ -276,8 +281,10 @@ export class Header implements AfterViewInit, OnDestroy {
     this.isProfileMenuOpen = false;
     this.showPracticeDropdown = false;
     this.showQuizDropdown = false;
+    this.showSocialDropdown = false;
     this.mobilePracticeOpen = false;
     this.mobileQuizOpen = false;
+    this.mobileSocialOpen = false;
     this.router.navigate(['/sessions']);
     this.cdr.detectChanges();
   }
@@ -290,5 +297,21 @@ export class Header implements AfterViewInit, OnDestroy {
   toggleMobilePractice(event: Event) {
     event.preventDefault();
     this.mobilePracticeOpen = !this.mobilePracticeOpen;
+  }
+
+  toggleSocialDropdown(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.showSocialDropdown = !this.showSocialDropdown;
+    if (this.showSocialDropdown) {
+      this.showQuizDropdown = false;
+      this.showPracticeDropdown = false;
+    }
+    this.cdr.detectChanges();
+  }
+
+  toggleMobileSocial(event: Event) {
+    event.preventDefault();
+    this.mobileSocialOpen = !this.mobileSocialOpen;
   }
 }
