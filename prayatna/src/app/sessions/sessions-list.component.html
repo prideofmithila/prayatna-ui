@@ -7,7 +7,7 @@
       </div>
     </div>
 
-    <button class="btn btn-primary d-none d-sm-inline-flex d-flex align-items-center justify-content-center add-btn" style="width: 46px; height: 46px;" (click)="createNew()" title="Add session">
+    <button class="btn btn-primary d-flex align-items-center justify-content-center add-btn" style="width: 46px; height: 46px;" (click)="createNew()" title="Add session">
       <span class="material-icons">add</span>
     </button>
   </div>
@@ -38,8 +38,6 @@
       </div>
     </div>
   </div>
-
-  <button class="fab d-inline-flex d-md-none" title="New session" (click)="createNew()">+</button>
 </div>
 <!-- Delete Session Modal -->
 <div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
