@@ -94,6 +94,10 @@
 
   @media (max-width: 575.98px) {
     .session-card .icon-btn { display: none; }
+    .session-card .card-inner { align-items: center; text-align: center; gap: 10px; }
+    .session-card .card-inner > .d-flex { justify-content: center; }
+    .session-card .session-title { text-align: center; }
+    .session-card .duration { justify-content: center; gap: 8px; }
   }
 }
 

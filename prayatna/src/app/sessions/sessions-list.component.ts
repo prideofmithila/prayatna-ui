@@ -29,11 +29,11 @@ export class SessionsListComponent {
   }
 
   durationToHuman(sec: number) {
-    if (!sec) return '0s';
+    if (!sec) return '00:00:00';
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
     const s = sec % 60;
-    return `${h ? h + 'h ' : ''}${m ? m + 'm ' : ''}${s ? s + 's' : ''}`.trim();
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
   createNew() {
