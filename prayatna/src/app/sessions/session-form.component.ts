@@ -1,10 +1,11 @@
-import { Component, OnInit, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormArray, FormBuilder, FormGroup, FormControl, Validators, AbstractControl } from '@angular/forms';
 import { PortalDirective } from '../shared/portal.directive';
 import { Router, ActivatedRoute } from '@angular/router';
 import { SessionsService } from './sessions.service';
 import { Session, Task } from './session.model';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-session-form',
@@ -13,7 +14,7 @@ import { Session, Task } from './session.model';
   templateUrl: './session-form.component.html',
   styleUrls: ['./sessions.scss']
 })
-export class SessionFormComponent implements OnInit {
+export class SessionFormComponent implements OnInit, OnDestroy {
   sessions: Session[] = [];
   editingIndex: number | null = null;
   isViewMode = false;
@@ -31,6 +32,9 @@ export class SessionFormComponent implements OnInit {
   taskModalForm: FormGroup;
   subtaskModalForm: FormGroup;
 
+  private subs = new Subscription();
+  private loadedForEdit = false;
+
   // Error tracking
   taskModalErrors: { [key: string]: string } = {};
   subtaskModalErrors: { [key: string]: string } = {};
@@ -39,8 +43,6 @@ export class SessionFormComponent implements OnInit {
   @ViewChild('sessionNameInput') sessionNameInput!: ElementRef<HTMLInputElement>;
 
   constructor(private sessionsService: SessionsService, private fb: FormBuilder, private router: Router, private route: ActivatedRoute, private cdr: ChangeDetectorRef) {
-    this.sessions = this.sessionsService.load();
-
     this.form = this.fb.group({
       sessionName: ['', [Validators.required, Validators.minLength(1)]],
       isTimed: [true],
@@ -88,19 +90,40 @@ export class SessionFormComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.route.paramMap.subscribe(pm => {
+    this.subs.add(this.sessionsService.sessions$.subscribe(list => {
+      this.sessions = list;
+      if (this.editingIndex !== null && !this.loadedForEdit && this.sessions[this.editingIndex]) {
+        this.loadForEdit(this.editingIndex);
+        this.loadedForEdit = true;
+        if (this.isViewMode) {
+          this.form.disable({ emitEvent: false });
+        }
+      }
+    }));
+
+    this.subs.add(this.route.paramMap.subscribe(pm => {
       this.isViewMode = (this.route.snapshot.routeConfig?.path || '').includes('view');
       const id = pm.get('id');
       if (id !== null) {
         const idx = Number(id);
-        if (!isNaN(idx) && idx >= 0 && idx < this.sessions.length) {
-          this.loadForEdit(idx);
-          if (this.isViewMode) {
-            this.form.disable({ emitEvent: false });
+        if (!isNaN(idx)) {
+          this.editingIndex = idx;
+          if (this.sessions[idx] && !this.loadedForEdit) {
+            this.loadForEdit(idx);
+            this.loadedForEdit = true;
+            if (this.isViewMode) {
+              this.form.disable({ emitEvent: false });
+            }
           }
         }
       }
-    });
+    }));
+
+    this.sessionsService.refreshSessions();
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
   }
 
   // helpers
@@ -289,7 +312,7 @@ export class SessionFormComponent implements OnInit {
   
   loadForEdit(idx:number){ const s=this.sessions[idx]; this.editingIndex=idx; const total=s.totalDuration||0; const h=Math.floor(total/3600); const m=Math.floor((total%3600)/60); const sec=total%60; this.form.patchValue({ sessionName: s.sessionName, isTimed: s.isTimed, totalDuration: s.totalDuration||0, durationHours:h, durationMinutes:m, durationSeconds:sec }); while(this.tasks.length) this.tasks.removeAt(0); s.tasks.forEach(t=>this.addTask(t)); }
 
-  save(){ 
+  async save(){ 
     this.sessionFormErrors = {};
     // Validate session name
     const sessionNameVal = this.form.get('sessionName')?.value;
@@ -303,7 +326,9 @@ export class SessionFormComponent implements OnInit {
     const minutes=Number(value.durationMinutes)||0; 
     const seconds=Number(value.durationSeconds)||0; 
     const computedTotal=hours*3600+minutes*60+seconds; 
+    const existing = (this.editingIndex !== null && this.editingIndex < this.sessions.length) ? this.sessions[this.editingIndex] : null;
     const session:Session={ 
+      id: existing?.id,
       sessionName:value.sessionName, 
       isTimed:!!value.isTimed, 
       totalDuration: computedTotal>0?computedTotal:(Number(value.totalDuration)||0), 
@@ -315,10 +340,21 @@ export class SessionFormComponent implements OnInit {
       })) 
     };
 
-    if(this.editingIndex===null){ this.sessions.push(session); } else { this.sessions[this.editingIndex]=session; }
-
-    this.sessionsService.save(this.sessions);
-    this.router.navigate(['/sessions']);
+    try {
+      await this.sessionsService.saveSession(session, this.editingIndex ?? undefined);
+      await this.sessionsService.refreshSessions();
+      this.router.navigate(['/sessions']);
+    } catch (err) {
+      // Show error to user
+      const message = this.resolveApiErrorMessage(err);
+      // Reassign object to ensure change detection even if running outside Angular zone
+      this.sessionFormErrors = { ...this.sessionFormErrors, api: message };
+      setTimeout(() => {
+        try { document.getElementById('session-api-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
+      }, 0);
+      try { this.cdr.detectChanges(); } catch {}
+      console.error('Save failed:', err);
+    }
   }
 
   cancel(){ this.router.navigate(['/sessions']); }
@@ -334,12 +370,22 @@ export class SessionFormComponent implements OnInit {
     }, 0);
   }
   
-  confirmDeleteSession() {
+  async confirmDeleteSession() {
     if(this.editingIndex===null) return;
-    this.sessions.splice(this.editingIndex,1); 
-    this.sessionsService.save(this.sessions); 
-    this.showDeleteSessionModal = false;
-    this.router.navigate(['/sessions']);
+    try {
+      await this.sessionsService.deleteSession(this.editingIndex);
+      this.showDeleteSessionModal = false;
+      this.router.navigate(['/sessions']);
+    } catch (err) {
+      this.showDeleteSessionModal = false;
+      const message = 'Server issue: unable to delete right now. Please try again later.';
+      this.sessionFormErrors = { ...this.sessionFormErrors, api: message };
+      setTimeout(() => {
+        try { document.getElementById('session-api-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
+      }, 0);
+      try { this.cdr.detectChanges(); } catch {}
+      console.error('Delete failed:', err);
+    }
   }
   
   cancelDeleteSession() {
@@ -372,5 +418,37 @@ export class SessionFormComponent implements OnInit {
     if (this.editingIndex !== null) {
       this.router.navigate(['/sessions', this.editingIndex, 'timer']);
     }
+  }
+
+  private resolveApiErrorMessage(err: any): string {
+    const errorPayload = err?.error;
+
+    if (typeof errorPayload === 'string') {
+      try {
+        const parsed = JSON.parse(errorPayload);
+        if (parsed?.message) return parsed.message;
+        if (parsed?.error_description) return parsed.error_description;
+        if (parsed?.error) return parsed.error;
+      } catch {
+        return errorPayload;
+      }
+    }
+
+    if (errorPayload?.message) return errorPayload.message;
+    if (errorPayload?.error?.message) return errorPayload.error.message;
+    if (errorPayload?.detail) return errorPayload.detail;
+    if (errorPayload?.title) return errorPayload.title;
+
+    if (Array.isArray(errorPayload?.errors) && errorPayload.errors.length) {
+      return errorPayload.errors.join('; ');
+    }
+    if (errorPayload?.errors && typeof errorPayload.errors === 'object') {
+      const flattened = Object.values(errorPayload.errors).flat().filter(Boolean).join('; ');
+      if (flattened) return flattened;
+    }
+
+    if (err?.message) return err.message;
+    if (err?.status) return `Request failed (${err.status})`;
+    return 'Failed to save session. Please try again.';
   }
 }

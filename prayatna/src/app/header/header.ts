@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import Offcanvas from 'bootstrap/js/dist/offcanvas';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { filter } from 'rxjs/operators';
+import { SessionsService } from '../sessions/sessions.service';
 
 @Component({
   selector: 'app-header',
@@ -44,7 +45,7 @@ export class Header implements AfterViewInit, OnDestroy {
   @ViewChild('measureContainer', { read: ElementRef }) measureContainer!: ElementRef<HTMLElement>;
   @ViewChildren('measureItem', { read: ElementRef }) measureItems!: QueryList<ElementRef<HTMLElement>>;
 
-  constructor(private cdr: ChangeDetectorRef, private oauthService: OAuthService, private router: Router) {
+  constructor(private cdr: ChangeDetectorRef, private oauthService: OAuthService, private router: Router, private sessionsService: SessionsService) {
     // only fetch profile when a relevant auth event occurs (token received/refreshed)
     this.oauthService.events.pipe(
       filter((e: any) => e?.type === 'token_received' || e?.type === 'token_refreshed' || e?.type === 'session_terminated' || e?.type === 'logout' || e?.type === 'token_expires')
@@ -88,20 +89,12 @@ export class Header implements AfterViewInit, OnDestroy {
 
     this.lastAccessToken = access;
 
-    // load user profile once per token change
-    this.oauthService.loadUserProfile().then((profile: any) => {
-      this.isLoggedIn = true;
-      this.userName = profile?.name || profile?.preferred_username || profile?.given_name || null;
-      this.userPicture = profile?.picture || null;
-      this.cdr.detectChanges();
-    }).catch(() => {
-      // fallback to token claims
-      const claims: any = this.oauthService.getIdentityClaims() || {};
-      this.isLoggedIn = true;
-      this.userName = claims.name || claims.email || null;
-      this.userPicture = claims.picture || null;
-      this.cdr.detectChanges();
-    });
+    // Get user info from ID token claims instead of calling userinfo endpoint
+    const claims: any = this.oauthService.getIdentityClaims() || {};
+    this.isLoggedIn = true;
+    this.userName = claims?.name || claims?.preferred_username || claims?.given_name || claims?.email || 'User';
+    this.userPicture = claims?.picture || null;
+    this.cdr.detectChanges();
   }
 
   private computeVisibleLinks() {
@@ -171,18 +164,12 @@ export class Header implements AfterViewInit, OnDestroy {
   }
 
   signOut() {
-    // clear tokens and return to the same page
-    const returnUrl = this.router.url || '/sessions';
-    try {
-      // attempt proper revocation first
-      const fn: any = (this.oauthService as any).revokeTokenAndLogout;
-      if (typeof fn === 'function') {
-        fn.call(this.oauthService);
-      } else {
-        this.oauthService.logOut();
-      }
-    } catch {}
-
+    // Clear tokens locally without calling revoke endpoint (backend uses custom tokens)
+    this.oauthService.logOut(true); // true = skip revoke endpoint call
+    
+    // Clear API sessions from local storage
+    this.sessionsService.clearApiSessions();
+    
     // force UI to reflect signed-out state immediately
     this.isLoggedIn = false;
     this.userName = null;
@@ -190,9 +177,6 @@ export class Header implements AfterViewInit, OnDestroy {
     this.lastAccessToken = null;
     this.isProfileMenuOpen = false;
     this.cdr.detectChanges();
-
-    // navigate back to same page (now in signed-out state)
-    this.router.navigateByUrl(returnUrl);
   }
 
   toggleProfileMenu(event: Event) {

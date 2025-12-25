@@ -1,3 +1,8 @@
+      <div class="alert alert-danger alert-dismissible fade show" *ngIf="errorMessage">
+        <strong>Error:</strong> {{ errorMessage }}
+        <button type="button" class="btn-close" (click)="errorMessage = null"></button>
+      </div>
+
 <div class="sessions-page container py-3 mt-4">
   <div class="d-flex mb-3 align-items-center gap-3 actions-bar">
     <div class="flex-grow-1 search-holder">

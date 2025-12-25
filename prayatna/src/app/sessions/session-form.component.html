@@ -1,4 +1,8 @@
 <div class="session-form container mt-4 pb-4">
+  <div id="session-api-error" class="alert alert-danger mb-3" role="alert" aria-live="assertive" *ngIf="sessionFormErrors['api']">
+    <strong>Error:</strong> {{ sessionFormErrors['api'] }}
+  </div>
+
   <ng-container *ngIf="isViewMode; else editHeader">
     <div class="d-flex justify-content-center mb-3 summary-actions gap-3">
       <button type="button" class="btn btn-link p-2 text-secondary" title="Edit" (click)="goToEdit()">
@@ -52,7 +56,7 @@
         </button>
       </div>
       
-      <div *ngIf="tasks.controls.length === 0" class="text-center text-muted py-4">
+      <div *ngIf="!isViewMode && tasks.controls.length === 0" class="text-center text-muted py-4">
         <p class="mb-0">No task is added. Click on add (+) button to add task to session.</p>
       </div>
       

@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { SessionsService } from './sessions.service';
 import { Session } from './session.model';
 
@@ -12,14 +13,31 @@ import { Session } from './session.model';
   templateUrl: './sessions-list.component.html',
   styleUrls: ['./sessions.scss']
 })
-export class SessionsListComponent {
+export class SessionsListComponent implements OnInit, OnDestroy {
   sessions: Session[] = [];
   searchTerm = '';
   showDeleteModal = false;
   sessionToDelete: number | null = null;
+    errorMessage: string | null = null;
+  private sub = new Subscription();
 
-  constructor(private sessionsService: SessionsService, private router: Router) {
-    this.sessions = this.sessionsService.load();
+  constructor(private sessionsService: SessionsService, private router: Router, private cdr: ChangeDetectorRef) {}
+
+  ngOnInit(): void {
+    this.sub.add(this.sessionsService.sessions$.subscribe(s => {
+      this.sessions = s;
+      console.log('Sessions updated in list component:', s.length);
+      this.cdr.detectChanges();
+    }));
+    // Always refresh when component initializes to get latest data
+    this.sessionsService.refreshSessions().catch(err => {
+      this.errorMessage = 'Failed to load sessions. Please try again.';
+      console.error('Refresh failed:', err);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.sub.unsubscribe();
   }
 
   get filteredSessions() {
@@ -52,12 +70,20 @@ export class SessionsListComponent {
     this.router.navigate(['/sessions', i, 'edit']);
   }
 
-  duplicate(i: number) {
+  async duplicate(i: number) {
     const s = this.sessions[i];
+    if (!s) return;
     const copy: Session = JSON.parse(JSON.stringify(s));
-    copy.sessionName = copy.sessionName + ' (copy)';
-    this.sessions.push(copy);
-    this.sessionsService.save(this.sessions);
+    copy.id = undefined;
+    copy.sessionName = `${copy.sessionName} (copy)`;
+    try {
+      await this.sessionsService.saveSession(copy);
+      this.errorMessage = null;
+      await this.sessionsService.refreshSessions();
+    } catch (err) {
+      this.errorMessage = 'Failed to duplicate session. Please try again.';
+      console.error('Duplicate failed:', err);
+    }
   }
 
   delete(i: number) {
@@ -65,11 +91,16 @@ export class SessionsListComponent {
     this.showDeleteModal = true;
   }
   
-  confirmDelete() {
+  async confirmDelete() {
     if(this.sessionToDelete !== null) {
-      this.sessions.splice(this.sessionToDelete, 1);
-      this.sessionsService.save(this.sessions);
-      this.sessionToDelete = null;
+      try {
+        await this.sessionsService.deleteSession(this.sessionToDelete);
+        this.errorMessage = null;
+        this.sessionToDelete = null;
+      } catch (err) {
+        this.errorMessage = 'Failed to delete session. Please try again.';
+        console.error('Delete failed:', err);
+      }
     }
     this.showDeleteModal = false;
   }
@@ -79,3 +110,5 @@ export class SessionsListComponent {
     this.sessionToDelete = null;
   }
 }
+
+// Debug marker

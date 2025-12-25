@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SessionsService } from './sessions.service';
 import { Session, Task } from './session.model';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-session-timer',
@@ -15,6 +16,7 @@ import { Session, Task } from './session.model';
 export class SessionTimerComponent implements OnInit, OnDestroy {
   session: Session | null = null;
   sessionIndex: number = -1;
+  sessions: Session[] = [];
   
   // Timer states
   isRunning = false;
@@ -33,6 +35,7 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
   private previousSessionWarning = false;
   private previousTaskWarning = false;
   private alarmTimeout: any = null;
+  private sessionsSub = new Subscription();
   // Wake Lock state
   private wakeLock: any = null;
   private visibilityHandler = () => {
@@ -54,8 +57,13 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.sessionIndex = parseInt(id, 10);
-      this.loadSession();
     }
+
+    this.sessionsSub.add(this.sessionsService.sessions$.subscribe(list => {
+      this.sessions = list;
+      this.loadSession();
+    }));
+    this.sessionsService.refreshSessions();
     
     // Initialize alarm audio (play for 5 seconds only)
     this.alarmAudio = new Audio('prayatna-alarm.mp3');
@@ -77,12 +85,12 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
     if (typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
     }
+    this.sessionsSub.unsubscribe();
   }
 
   loadSession() {
-    const sessions = this.sessionsService.load();
-    if (this.sessionIndex >= 0 && this.sessionIndex < sessions.length) {
-      this.session = sessions[this.sessionIndex];
+    if (this.sessionIndex >= 0 && this.sessionIndex < this.sessions.length) {
+      this.session = this.sessions[this.sessionIndex];
       // Initialize session elapsed time from session's total duration if it exists
       this.sessionElapsedSeconds = this.session.totalDuration || 0;
     }

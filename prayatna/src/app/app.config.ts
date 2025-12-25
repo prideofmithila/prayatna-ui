@@ -1,5 +1,6 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, APP_INITIALIZER } from '@angular/core';
 import { provideRouter, Router } from '@angular/router';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { OAuthModule, OAuthService, AuthConfig } from 'angular-oauth2-oidc';
 
 import { routes } from './app.routes';
@@ -8,15 +9,19 @@ import { environment } from '../environments/environment';
 export function initializeAuth(oauthService: OAuthService, router: Router) {
   return () => {
     oauthService.configure(environment.authConfig);
-    // Load discovery first, then override tokenEndpoint before attempting login so
-    // the authorization code exchange posts to our backend proxy (not Google's endpoint)
     return oauthService.loadDiscoveryDocument().then(() => {
+      // Override tokenEndpoint to use backend proxy instead of Google's token endpoint
       oauthService.tokenEndpoint = environment.authConfig.tokenEndpoint;
-      // automatic silent refresh uses refresh tokens if provider supports it
+      // Disable automatic userinfo loading
       oauthService.setupAutomaticSilentRefresh();
-      // now attempt login (this will perform code exchange using the tokenEndpoint we set)
-      return oauthService.tryLogin().then(() => {
-        // if login succeeded, navigate back to stored returnUrl
+      return oauthService.tryLogin({
+        // Disable userinfo endpoint call during login
+        disableOAuth2StateCheck: false,
+        preventClearHashAfterLogin: false,
+        onTokenReceived: () => {
+          // Token received, skip userinfo call
+        }
+      }).then(() => {
         const hasToken = oauthService.hasValidAccessToken();
         if (hasToken) {
           try {
@@ -36,6 +41,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
+    provideHttpClient(withInterceptorsFromDi()),
     ...(OAuthModule.forRoot().providers || []),
     {
       provide: APP_INITIALIZER,
