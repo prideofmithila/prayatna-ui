@@ -66,6 +66,7 @@ export class SessionsListComponent implements OnInit, OnDestroy {
 
   goToLogin() {
     this.showLocalStorageWarning = false;
+    sessionStorage.setItem('returnUrl', this.router.url);
     this.router.navigate(['/login']);
   }
 

@@ -289,6 +289,11 @@ export class Header implements AfterViewInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  goToLogin() {
+    sessionStorage.setItem('returnUrl', this.router.url);
+    this.router.navigate(['/login']);
+  }
+
   toggleMobileQuiz(event: Event) {
     event.preventDefault();
     this.mobileQuizOpen = !this.mobileQuizOpen;

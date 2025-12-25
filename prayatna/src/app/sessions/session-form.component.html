@@ -1,139 +1,143 @@
-<div class="session-form container mt-4 pb-4">
-  <div id="session-api-error" class="alert alert-danger mb-3" role="alert" aria-live="assertive" *ngIf="sessionFormErrors['api']">
-    <strong>Error:</strong> {{ sessionFormErrors['api'] }}
-  </div>
-
-  <ng-container *ngIf="isViewMode; else editHeader">
-    <div class="d-flex justify-content-center mb-3 summary-actions gap-3">
-      <button type="button" class="btn btn-link p-2 text-secondary" title="Edit" (click)="goToEdit()">
-        <span class="material-icons" style="font-size: 26px;">edit</span>
-      </button>
-      <button type="button" class="btn btn-link p-2 text-primary" title="Play" (click)="playSession()">
-        <span class="material-icons" style="font-size: 30px;">play_circle_filled</span>
-      </button>
-      <button type="button" class="btn btn-link p-2 text-danger" title="Delete" (click)="deleteCurrent()">
-        <span class="material-icons" style="font-size: 26px;">delete</span>
-      </button>
+<div class="session-form">
+  <div class="container-lg py-4">
+    <div id="session-api-error" class="alert alert-danger mb-4" role="alert" aria-live="assertive" *ngIf="sessionFormErrors['api']">
+      <strong>Error:</strong> {{ sessionFormErrors['api'] }}
     </div>
 
-    <div class="view-summary-card mb-4 d-flex justify-content-between align-items-center">
-      <div class="d-flex align-items-center gap-3">
-        <span class="material-icons text-primary" style="font-size: 30px;">play_arrow</span>
-        <h4 class="mb-0">{{ form.get('sessionName')?.value || 'Untitled Session' }}</h4>
-      </div>
-      <div class="d-flex align-items-center gap-2">
-        <span class="material-icons text-timer" style="font-size: 22px;">timer</span>
-          <div class="fw-semibold">{{ viewTotalDurationSeconds() > 0 ? formatDuration(viewTotalDurationSeconds()) : 'Untimed' }}</div>
-      </div>
-    </div>
-  </ng-container>
-
-  <ng-template #editHeader>
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h2 class="mb-0">{{ editingIndex === null ? 'Add Session' : 'Edit Session' }}</h2>
-    </div>
-  </ng-template>
-
-  <form [formGroup]="form" (ngSubmit)="save()">
-    <div class="form-floating mb-3" *ngIf="!isViewMode">
-      <input class="form-control" id="sessionName" formControlName="sessionName" placeholder="Session Name" #sessionNameInput [class.is-invalid]="form.get('sessionName')?.invalid && form.get('sessionName')?.touched || !!sessionFormErrors['sessionName']" />
-      <label for="sessionName">Session Name <span class="text-danger">*</span></label>
-      <div class="invalid-feedback d-block" *ngIf="sessionFormErrors['sessionName']">
-        {{ sessionFormErrors['sessionName'] }}
-      </div>
-      <div class="invalid-feedback" *ngIf="form.get('sessionName')?.invalid && form.get('sessionName')?.touched && !sessionFormErrors['sessionName']">
-        Session name is required
-      </div>
-    </div>
-
-    <hr *ngIf="!isViewMode" />
-
-    <div class="tasks">
-      <div class="d-flex justify-content-between align-items-center mb-3" *ngIf="!isViewMode">
-        <h5 class="mb-0">Tasks in Session</h5>
-        <button type="button" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; padding: 0;" (click)="openTaskModal()">
-          <span class="material-icons">add</span>
+    <ng-container *ngIf="isViewMode; else editHeader">
+      <div class="d-flex justify-content-center mb-4 summary-actions gap-3">
+        <button type="button" class="btn btn-link p-2 text-secondary" title="Edit" (click)="goToEdit()">
+          <span class="material-icons" style="font-size: 26px;">edit</span>
+        </button>
+        <button type="button" class="btn btn-link p-2 text-primary" title="Play" (click)="playSession()">
+          <span class="material-icons" style="font-size: 30px;">play_circle_filled</span>
+        </button>
+        <button type="button" class="btn btn-link p-2 text-danger" title="Delete" (click)="deleteCurrent()">
+          <span class="material-icons" style="font-size: 26px;">delete</span>
         </button>
       </div>
-      
-      <div *ngIf="!isViewMode && tasks.controls.length === 0" class="text-center text-muted py-4">
-        <p class="mb-0">No task is added. Click on add (+) button to add task to session.</p>
+
+      <div class="view-summary-card mb-4 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+          <span class="material-icons text-primary" style="font-size: 30px;">play_arrow</span>
+          <div>
+            <h3 class="mb-0" style="font-size: 1.3rem; font-weight: 700;">{{ form.get('sessionName')?.value || 'Untitled Session' }}</h3>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="material-icons text-timer" style="font-size: 22px;">timer</span>
+          <div class="fw-bold">{{ viewTotalDurationSeconds() > 0 ? formatDuration(viewTotalDurationSeconds()) : 'Untimed' }}</div>
+        </div>
       </div>
-      
-      <div *ngIf="tasks.controls.length > 0">
-        <h6 class="mb-3">Tasks:</h6>
-        <div class="row g-3">
-          <div class="col-12 col-md-6 col-lg-4" *ngFor="let t of tasks.controls; let i = index;">
-            <div class="task-card h-100">
-              <div class="d-flex justify-content-between align-items-start mb-2">
-                <h5 class="mb-0 text-primary">{{ t.get('taskName')?.value }}</h5>
-                <div *ngIf="!isViewMode">
-                  <button type="button" class="btn btn-sm btn-link text-secondary p-1" (click)="openTaskModal(i)">
-                    <span class="material-icons" style="font-size: 18px;">edit</span>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-link text-danger p-1" (click)="deleteTask(i)">
-                    <span class="material-icons" style="font-size: 18px;">delete</span>
-                  </button>
-                </div>
-              </div>
-              
-              <div class="d-flex justify-content-between mb-2">
-                <span class="text-muted">Task Duration</span>
-                <strong>{{ formatDuration(taskGroupDuration(t)) }}</strong>
-              </div>
-              
-              <div *ngIf="t.get('hasSubtasks')?.value && getSubtasksControls(i).length > 0" class="mt-2">
-                <h6 class="mb-2">Subtasks</h6>
-                <div *ngFor="let st of getSubtasksControls(i)" class="d-flex justify-content-between mb-1 ps-3">
-                  <span>- {{ st.get('subtaskName')?.value || 'Untitled' }}</span>
-                  <span>{{ formatDuration(st.get('duration')?.value || 0) }}</span>
+    </ng-container>
+
+    <ng-template #editHeader>
+      <div class="mb-4">
+        <h2 class="mb-1" style="font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: #0f172a;">{{ editingIndex === null ? 'Add Session' : 'Edit Session' }}</h2>
+        <p class="text-muted mb-0">Create a new study session or update an existing one</p>
+      </div>
+    </ng-template>
+
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <div class="form-card mb-4" *ngIf="!isViewMode">
+        <div class="form-section">
+          <label for="sessionName" class="form-label fw-bold mb-2">Session Name <span class="text-danger">*</span></label>
+          <input class="form-control" id="sessionName" formControlName="sessionName" placeholder="e.g., Constitutional Law Study" #sessionNameInput [class.is-invalid]="form.get('sessionName')?.invalid && form.get('sessionName')?.touched || !!sessionFormErrors['sessionName']" />
+          <div class="invalid-feedback d-block" *ngIf="sessionFormErrors['sessionName']">
+            {{ sessionFormErrors['sessionName'] }}
+          </div>
+          <div class="invalid-feedback" *ngIf="form.get('sessionName')?.invalid && form.get('sessionName')?.touched && !sessionFormErrors['sessionName']">
+            Session name is required
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-section">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin: 0;">Tasks in Session</h4>
+            <button type="button" class="add-task-circle" *ngIf="!isViewMode" (click)="openTaskModal()" style="display: inline-flex; align-items: center; justify-content: center;">
+              <span class="material-icons" style="font-size: 20px;">add</span>
+            </button>
+          </div>
+          
+          <div *ngIf="!isViewMode && tasks.controls.length === 0" class="text-center text-muted py-5">
+            <p class="mb-0" style="font-size: 0.95rem;">No tasks added yet. Click the + button to create your first task.</p>
+          </div>
+          
+          <div *ngIf="tasks.controls.length > 0">
+            <div class="row g-3">
+              <div class="col-12 col-md-6 col-lg-4" *ngFor="let t of tasks.controls; let i = index;">
+                <div class="task-card h-100">
+                  <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0" style="font-size: 1.05rem; font-weight: 700; color: #0f172a;">{{ t.get('taskName')?.value }}</h5>
+                    <div *ngIf="!isViewMode" class="d-flex gap-1">
+                      <button type="button" class="btn btn-sm btn-link text-secondary p-1" (click)="openTaskModal(i)">
+                        <span class="material-icons" style="font-size: 18px;">edit</span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-link text-danger p-1" (click)="deleteTask(i)">
+                        <span class="material-icons" style="font-size: 18px;">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="d-flex justify-content-between mb-3">
+                    <span class="text-muted" style="font-size: 0.9rem; font-weight: 600;">Task Duration</span>
+                    <strong style="color: #0b4bb4; font-weight: 700;">{{ formatDuration(taskGroupDuration(t)) }}</strong>
+                  </div>
+                  
+                  <div *ngIf="t.get('hasSubtasks')?.value && getSubtasksControls(i).length > 0" class="mt-3 pt-3 border-top">
+                    <h6 class="mb-2" style="font-size: 0.9rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Subtasks</h6>
+                    <div *ngFor="let st of getSubtasksControls(i)" class="d-flex justify-content-between mb-2 ps-3" style="font-size: 0.9rem;">
+                      <span style="color: #475569;">— {{ st.get('subtaskName')?.value || 'Untitled' }}</span>
+                      <span style="color: #0b4bb4; font-weight: 600;">{{ formatDuration(st.get('duration')?.value || 0) }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <hr class="my-3" *ngIf="!isViewMode" />
-
-    <div class="mb-3" *ngIf="!isViewMode">
-      <label class="form-label mb-2">Session Duration (optional)</label>
-      <div class="d-flex gap-2 flex-nowrap">
-        <div class="form-floating flex-fill">
-          <input type="number" class="form-control" id="durationHours" formControlName="durationHours" placeholder="Hours" />
-          <label for="durationHours">Hours</label>
-        </div>
-        <div class="form-floating flex-fill">
-          <input type="number" class="form-control" id="durationMinutes" formControlName="durationMinutes" placeholder="Minutes" />
-          <label for="durationMinutes">Minutes</label>
-        </div>
-        <div class="form-floating flex-fill">
-          <input type="number" class="form-control" id="durationSeconds" formControlName="durationSeconds" placeholder="Seconds" />
-          <label for="durationSeconds">Seconds</label>
+      <div class="form-section mt-4 pt-4 border-top">
+        <label class="form-label fw-bold mb-3">Session Duration <span class="small text-muted">(optional)</span></label>
+        <div class="d-flex gap-2 flex-nowrap">
+          <div class="form-floating" style="flex: 1;">
+            <input type="number" class="form-control" id="durationHours" formControlName="durationHours" placeholder="Hours" />
+            <label for="durationHours">Hours</label>
+          </div>
+          <div class="form-floating" style="flex: 1;">
+            <input type="number" class="form-control" id="durationMinutes" formControlName="durationMinutes" placeholder="Minutes" />
+            <label for="durationMinutes">Minutes</label>
+          </div>
+          <div class="form-floating" style="flex: 1;">
+            <input type="number" class="form-control" id="durationSeconds" formControlName="durationSeconds" placeholder="Seconds" />
+            <label for="durationSeconds">Seconds</label>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="mt-4 d-flex gap-2" *ngIf="!isViewMode">
-      <button class="btn btn-success" type="submit">Save</button>
-      <button class="btn btn-secondary" type="button" (click)="cancel()">Cancel</button>
-    </div>
-  </form>
+      <div class="mt-5 d-flex gap-3 w-100" *ngIf="!isViewMode">
+        <button class="btn btn-primary" type="submit" style="padding: 0.75rem 1.5rem; font-weight: 700; border-radius: 10px; flex: 1;">Save Session</button>
+        <button class="btn btn-outline-secondary" type="button" (click)="cancel()" style="padding: 0.75rem 1.5rem; font-weight: 700; border-radius: 10px; flex: 1;">Cancel</button>
+      </div>
+    </form>
+  </div>
 
   <!-- Task Modal (Bootstrap style) -->
   <div class="modal fade" [class.show]="taskModalOpen" [style.display]="taskModalOpen ? 'block' : 'none'" tabindex="-1" *ngIf="taskModalOpen">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header border-0">
-          <h5 class="modal-title">{{ editingTaskIndex === null ? 'Add Task' : 'Edit Task' }}</h5>
+      <div class="modal-content modal-card">
+        <div class="modal-header border-0 pb-2">
+          <h5 class="modal-title" style="font-weight: 700; font-size: 1.2rem; color: #0f172a;">{{ editingTaskIndex === null ? 'Add Task' : 'Edit Task' }}</h5>
           <button type="button" class="btn-close" (click)="closeTaskModal()"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body pt-2">
           <form [formGroup]="taskModalForm">
-            <div class="form-floating mb-2">
-              <input class="form-control" id="taskName" formControlName="taskName" placeholder="Task name" [class.is-invalid]="taskModalForm.get('taskName')?.invalid && taskModalForm.get('taskName')?.touched || !!taskModalErrors['taskName']" />
-              <label for="taskName">Task name <span class="text-danger">*</span></label>
+            <div class="form-floating mb-3">
+              <input class="form-control" id="taskName" formControlName="taskName" placeholder="e.g., Constitutional Amendments" [class.is-invalid]="taskModalForm.get('taskName')?.invalid && taskModalForm.get('taskName')?.touched || !!taskModalErrors['taskName']" />
+              <label for="taskName">Task Name <span class="text-danger">*</span></label>
               <div class="invalid-feedback d-block" *ngIf="taskModalErrors['taskName']">
                 {{ taskModalErrors['taskName'] }}
               </div>
@@ -142,30 +146,32 @@
               </div>
             </div>
 
-            <div class="mb-2">
-              <label class="form-label">Has subtasks?</label>
+            <div class="mb-3">
+              <label class="form-label fw-bold">Subtasks?</label>
               <div>
                 <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" formControlName="hasSubtasks" [value]="true" /> <label class="form-check-label">Yes</label>
+                  <input class="form-check-input" type="radio" formControlName="hasSubtasks" [value]="true" id="hasSubYes" />
+                  <label class="form-check-label" for="hasSubYes">Yes</label>
                 </div>
                 <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="radio" formControlName="hasSubtasks" [value]="false" /> <label class="form-check-label">No</label>
+                  <input class="form-check-input" type="radio" formControlName="hasSubtasks" [value]="false" id="hasSubNo" />
+                  <label class="form-check-label" for="hasSubNo">No</label>
                 </div>
               </div>
             </div>
 
-            <div *ngIf="!taskModalForm.get('hasSubtasks')?.value" class="mb-2">
-              <label class="form-label mb-2">Duration <span class="text-danger">*</span></label>
+            <div *ngIf="!taskModalForm.get('hasSubtasks')?.value" class="mb-3">
+              <label class="form-label fw-bold mb-2">Duration <span class="text-danger">*</span></label>
               <div class="d-flex gap-2 flex-nowrap">
-                <div class="form-floating flex-fill">
+                <div class="form-floating" style="flex: 1;">
                   <input type="number" class="form-control" id="taskDurationHours" formControlName="durationHours" placeholder="Hours" min="0" />
                   <label for="taskDurationHours">Hours</label>
                 </div>
-                <div class="form-floating flex-fill">
+                <div class="form-floating" style="flex: 1;">
                   <input type="number" class="form-control" id="taskDurationMinutes" formControlName="durationMinutes" placeholder="Minutes" min="0" max="59" />
                   <label for="taskDurationMinutes">Minutes</label>
                 </div>
-                <div class="form-floating flex-fill">
+                <div class="form-floating" style="flex: 1;">
                   <input type="number" class="form-control" id="taskDurationSeconds" formControlName="durationSeconds" placeholder="Seconds" min="0" max="59" />
                   <label for="taskDurationSeconds">Seconds</label>
                 </div>
@@ -176,23 +182,25 @@
             </div>
 
             <div *ngIf="taskModalForm.get('hasSubtasks')?.value">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0">Subtasks</h6>
-                <button class="btn btn-sm btn-primary" type="button" (click)="openSubtaskModal()">Add Subtask</button>
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0" style="font-weight: 700; color: #0f172a;">Subtasks</h6>
+                <button class="add-task-circle" type="button" (click)="openSubtaskModal()" style="display: inline-flex; align-items: center; justify-content: center;">
+                  <span class="material-icons" style="font-size: 18px;">add</span>
+                </button>
               </div>
               <div class="invalid-feedback d-block" *ngIf="taskModalErrors['subtasks']">
                 {{ taskModalErrors['subtasks'] }}
               </div>
               
               <div *ngFor="let s of taskModalSubtasks.controls; let si = index" [formGroup]="controlAsGroup(s)">
-                <div class="card mb-2 p-2">
+                <div class="task-card mb-2 p-3">
                   <div class="d-flex justify-content-between align-items-center">
                     <div class="flex-grow-1">
-                      <strong>{{ s.get('subtaskName')?.value || 'Untitled Subtask' }}</strong>
-                      <div class="small text-muted">Duration: {{ formatDuration(s.get('duration')?.value || 0) }}</div>
+                      <strong style="font-size: 0.95rem; color: #0f172a;">{{ s.get('subtaskName')?.value || 'Untitled Subtask' }}</strong>
+                      <div class="small text-muted mt-1" style="font-size: 0.85rem;">{{ formatDuration(s.get('duration')?.value || 0) }}</div>
                     </div>
-                    <div class="d-flex align-items-center">
-                      <button class="btn btn-sm btn-link text-secondary p-1 me-1" type="button" (click)="openSubtaskModal(si)">
+                    <div class="d-flex align-items-center gap-1">
+                      <button class="btn btn-sm btn-link text-secondary p-1" type="button" (click)="openSubtaskModal(si)">
                         <span class="material-icons" style="font-size: 18px;">edit</span>
                       </button>
                       <button class="btn btn-sm btn-link text-danger p-1" type="button" (click)="removeSubtaskInModal(si)">
@@ -203,30 +211,31 @@
                 </div>
               </div>
 
-              <div class="small text-muted mt-2">Total subtask duration: {{ formatDuration(taskModalTotalDuration) }}</div>
+              <div class="small text-muted mt-3 pt-2 border-top" style="font-size: 0.85rem; font-weight: 600;">Total subtask duration: <span style="color: #0b4bb4; font-weight: 700;">{{ formatDuration(taskModalTotalDuration) }}</span></div>
             </div>
           </form>
         </div>
-        <div class="modal-footer d-flex gap-2 border-0">
-          <button class="btn btn-primary" (click)="saveTaskModal()">Save Task</button>
-          <button class="btn btn-secondary" (click)="closeTaskModal()">Close</button>
+        <div class="modal-footer d-flex gap-3 border-0">
+          <button class="btn btn-primary flex-grow-1" (click)="saveTaskModal()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Save Task</button>
+          <button class="btn btn-outline-secondary flex-grow-1" (click)="closeTaskModal()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Cancel</button>
         </div>
       </div>
     </div>
   </div>
   <div class="modal-backdrop fade" [class.show]="taskModalOpen" *ngIf="taskModalOpen" (click)="closeTaskModal()"></div>
-  <!-- Subtask Modal (Bootstrap style) -->
+
+  <!-- Subtask Modal -->
   <div class="modal fade" [class.show]="subtaskModalOpen" [style.display]="subtaskModalOpen ? 'block' : 'none'" tabindex="-1" *ngIf="subtaskModalOpen">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header border-0">
-          <h5 class="modal-title">{{ editingSubtaskIndex === null ? 'Add Subtask' : 'Edit Subtask' }}</h5>
+      <div class="modal-content modal-card">
+        <div class="modal-header border-0 pb-2">
+          <h5 class="modal-title" style="font-weight: 700; font-size: 1.1rem; color: #0f172a;">{{ editingSubtaskIndex === null ? 'Add Subtask' : 'Edit Subtask' }}</h5>
           <button type="button" class="btn-close" (click)="closeSubtaskModal()"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body pt-2">
           <form [formGroup]="subtaskModalForm">
-            <div class="form-floating mb-2">
-              <input class="form-control" id="subtaskName" formControlName="subtaskName" placeholder="Subtask Name" [class.is-invalid]="subtaskModalForm.get('subtaskName')?.invalid && subtaskModalForm.get('subtaskName')?.touched || !!subtaskModalErrors['subtaskName']" />
+            <div class="form-floating mb-3">
+              <input class="form-control" id="subtaskName" formControlName="subtaskName" placeholder="e.g., Article 1-5" [class.is-invalid]="subtaskModalForm.get('subtaskName')?.invalid && subtaskModalForm.get('subtaskName')?.touched || !!subtaskModalErrors['subtaskName']" />
               <label for="subtaskName">Subtask Name <span class="text-danger">*</span></label>
               <div class="invalid-feedback d-block" *ngIf="subtaskModalErrors['subtaskName']">
                 {{ subtaskModalErrors['subtaskName'] }}
@@ -235,18 +244,18 @@
                 Subtask name is required
               </div>
             </div>
-            <div class="mb-2">
-              <label class="form-label mb-2">Duration <span class="text-danger">*</span></label>
+            <div class="mb-3">
+              <label class="form-label fw-bold mb-2">Duration <span class="text-danger">*</span></label>
               <div class="d-flex gap-2 flex-nowrap">
-                <div class="form-floating flex-fill">
+                <div class="form-floating" style="flex: 1;">
                   <input type="number" class="form-control" id="subtaskDurationHours" formControlName="durationHours" placeholder="Hours" min="0" />
                   <label for="subtaskDurationHours">Hours</label>
                 </div>
-                <div class="form-floating flex-fill">
+                <div class="form-floating" style="flex: 1;">
                   <input type="number" class="form-control" id="subtaskDurationMinutes" formControlName="durationMinutes" placeholder="Minutes" min="0" max="59" />
                   <label for="subtaskDurationMinutes">Minutes</label>
                 </div>
-                <div class="form-floating flex-fill">
+                <div class="form-floating" style="flex: 1;">
                   <input type="number" class="form-control" id="subtaskDurationSeconds" formControlName="durationSeconds" placeholder="Seconds" min="0" max="59" />
                   <label for="subtaskDurationSeconds">Seconds</label>
                 </div>
@@ -257,49 +266,49 @@
             </div>
           </form>
         </div>
-        <div class="modal-footer d-flex gap-2 border-0">
-          <button class="btn btn-primary" (click)="saveSubtaskModal()">Save</button>
-          <button class="btn btn-secondary" (click)="closeSubtaskModal()">Cancel</button>
+        <div class="modal-footer d-flex gap-3 border-0">
+          <button class="btn btn-primary flex-grow-1" (click)="saveSubtaskModal()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Save</button>
+          <button class="btn btn-outline-secondary flex-grow-1" (click)="closeSubtaskModal()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Cancel</button>
         </div>
       </div>
     </div>
   </div>
   <div class="modal-backdrop fade" [class.show]="subtaskModalOpen" *ngIf="subtaskModalOpen" (click)="closeSubtaskModal()"></div>
 
-<!-- Delete Session Modal (Bootstrap style, like timer) -->
+<!-- Delete Session Modal -->
 <div class="modal fade" [class.show]="showDeleteSessionModal" [style.display]="showDeleteSessionModal ? 'block' : 'none'" tabindex="-1" *ngIf="showDeleteSessionModal" style="z-index:200000;">
   <div class="modal-dialog modal-dialog-centered" role="dialog" aria-modal="true">
-    <div class="modal-content" style="z-index:200001;">
-      <div class="modal-header border-0">
-        <h5 class="modal-title">Confirm Delete</h5>
+    <div class="modal-content modal-card" style="z-index:200001;">
+      <div class="modal-header border-0 pb-2">
+        <h5 class="modal-title" style="font-weight: 700; color: #0f172a;">Delete Session?</h5>
         <button type="button" class="btn-close" (click)="cancelDeleteSession()"></button>
       </div>
-      <div class="modal-body">
-        <p class="mb-0">Are you sure you want to delete this session? This action cannot be undone.</p>
+      <div class="modal-body pt-2">
+        <p class="mb-0" style="color: #475569;">Are you sure you want to delete this session? This action cannot be undone.</p>
       </div>
-      <div class="modal-footer border-0">
-        <button type="button" class="btn btn-secondary" (click)="cancelDeleteSession()">Cancel</button>
-        <button type="button" class="btn btn-danger" (click)="confirmDeleteSession()">Delete</button>
+      <div class="modal-footer border-0 d-flex gap-3">
+        <button type="button" class="btn btn-outline-secondary flex-grow-1" (click)="cancelDeleteSession()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Cancel</button>
+        <button type="button" class="btn btn-danger flex-grow-1" (click)="confirmDeleteSession()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Delete</button>
       </div>
     </div>
   </div>
 </div>
 <div class="modal-backdrop fade" [class.show]="showDeleteSessionModal" *ngIf="showDeleteSessionModal" (click)="cancelDeleteSession()" style="z-index:199999;"></div>
 
-<!-- Delete Task Modal (Bootstrap style, like timer) -->
+<!-- Delete Task Modal -->
 <div class="modal fade" [class.show]="showDeleteTaskModal" [style.display]="showDeleteTaskModal ? 'block' : 'none'" tabindex="-1" *ngIf="showDeleteTaskModal" style="z-index:200000;">
   <div class="modal-dialog modal-dialog-centered" role="dialog" aria-modal="true">
-    <div class="modal-content" style="z-index:200001;">
-      <div class="modal-header border-0">
-        <h5 class="modal-title">Confirm Delete</h5>
+    <div class="modal-content modal-card" style="z-index:200001;">
+      <div class="modal-header border-0 pb-2">
+        <h5 class="modal-title" style="font-weight: 700; color: #0f172a;">Delete Task?</h5>
         <button type="button" class="btn-close" (click)="cancelDeleteTask()"></button>
       </div>
-      <div class="modal-body">
-        <p class="mb-0">Are you sure you want to delete this task? This action cannot be undone.</p>
+      <div class="modal-body pt-2">
+        <p class="mb-0" style="color: #475569;">Are you sure you want to delete this task? This action cannot be undone.</p>
       </div>
-      <div class="modal-footer border-0">
-        <button type="button" class="btn btn-secondary" (click)="cancelDeleteTask()">Cancel</button>
-        <button type="button" class="btn btn-danger" (click)="confirmDeleteTask()">Delete</button>
+      <div class="modal-footer border-0 d-flex gap-3">
+        <button type="button" class="btn btn-outline-secondary flex-grow-1" (click)="cancelDeleteTask()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Cancel</button>
+        <button type="button" class="btn btn-danger flex-grow-1" (click)="confirmDeleteTask()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Delete</button>
       </div>
     </div>
   </div>
@@ -309,20 +318,17 @@
 <!-- Local Storage Warning Modal -->
 <div class="modal fade" [class.show]="showLocalStorageWarning" [style.display]="showLocalStorageWarning ? 'block' : 'none'" tabindex="-1" *ngIf="showLocalStorageWarning" style="z-index:200000;">
   <div class="modal-dialog modal-dialog-centered" role="dialog" aria-modal="true">
-    <div class="modal-content" style="z-index:200001;">
-      <div class="modal-header border-0">
-        <h5 class="modal-title">Local Storage Notice</h5>
+    <div class="modal-content modal-card" style="z-index:200001;">
+      <div class="modal-header border-0 pb-2">
+        <h5 class="modal-title" style="font-weight: 700; color: #0f172a;">Notice</h5>
         <button type="button" class="btn-close" (click)="dismissLocalStorageWarning()"></button>
       </div>
-      <div class="modal-body">
-        <p>You are not logged in. This session will be saved on this device only and may be lost if browser cache or memory is cleared.</p>
-        <p class="mb-0">To save your sessions to your profile and access them from any device, please sign in.</p>
+      <div class="modal-body pt-2">
+        <p style="color: #475569;">You are not logged in. This session will be saved on this device only and may be lost if browser cache or memory is cleared.</p>
+        <p class="mb-0" style="color: #475569;">To save your sessions to your profile and access them from any device, please sign in.</p>
       </div>
-      <div class="modal-footer border-0">
-        <button type="button" class="btn btn-secondary" (click)="dismissLocalStorageWarning()">Continue as Guest</button>
-        <button type="button" class="btn btn-primary" (click)="goToLogin()">Sign In</button>
-      </div>
-    </div>
-  </div>
+      <div class="modal-footer border-0 d-flex gap-3">
+        <button type="button" class="btn btn-outline-secondary flex-grow-1" (click)="dismissLocalStorageWarning()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Continue as Guest</button>
+        <button type="button" class="btn btn-primary flex-grow-1" (click)="goToLogin()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Sign In</button>
 </div>
-<div class="modal-backdrop fade" [class.show]="showLocalStorageWarning" *ngIf="showLocalStorageWarning" (click)="dismissLocalStorageWarning()" style="z-index:199999;"></div>
+<div class="modal-backdrop fade" [class.show]="showLocalStorageWarning" *ngIf="showLocalStorageWarning" (click)="dismissLocalStorageWarning()" style="z-index:199999;"></div></div>
