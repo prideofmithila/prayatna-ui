@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, OnDestroy, ViewChild, ViewChildren, QueryList, ElementRef, ChangeDetectorRef } from '@angular/core';
+import { Component, AfterViewInit, OnDestroy, ViewChild, ViewChildren, QueryList, ElementRef, ChangeDetectorRef, HostListener } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import Offcanvas from 'bootstrap/js/dist/offcanvas';
@@ -15,13 +15,9 @@ import { SessionsService } from '../sessions/sessions.service';
 export class Header implements AfterViewInit, OnDestroy {
   links = [
     { label: 'Home', route: '/' },
-    { label: 'Sessions', route: '/sessions' },
-    { label: 'About', route: '/about' },
-    { label: 'Services', route: '/services' },
-    { label: 'Products', route: '/products' },
-    { label: 'Blog', route: '/blog' },
-    { label: 'Careers', route: '/careers' },
-    { label: 'Contact', route: '/contact' }
+    { label: 'Practice Tool', route: null },
+    { label: 'Daily Quiz', route: null },
+    { label: 'About', route: '/about' }
   ];
 
   offcanvasLinks = [...this.links];
@@ -31,11 +27,16 @@ export class Header implements AfterViewInit, OnDestroy {
   isLoggedIn = false;
   userName: string | null = null;
   userPicture: string | null = null;
+  userEmail: string | null = null;
+  mobileQuizOpen = false;
+  mobilePracticeOpen = false;
 
   // Cache last access token so we don't repeatedly call userinfo
   private lastAccessToken: string | null = null;
   // Profile dropdown
   isProfileMenuOpen = false;
+  showQuizDropdown = false;
+  showPracticeDropdown = false;
 
   private _offcanvasInstance: Offcanvas | null = null;
   private resizeObserver: any;
@@ -89,12 +90,80 @@ export class Header implements AfterViewInit, OnDestroy {
 
     this.lastAccessToken = access;
 
-    // Get user info from ID token claims instead of calling userinfo endpoint
-    const claims: any = this.oauthService.getIdentityClaims() || {};
+    // Prefer ID token claims; if not available (oidc disabled), decode tokens manually
+    let claims: any = this.oauthService.getIdentityClaims() || {};
+    if (!claims || Object.keys(claims).length === 0) {
+      const idt = this.oauthService.getIdToken();
+      if (idt) {
+        claims = this.decodeJwt(idt) || {};
+      }
+      if ((!claims || Object.keys(claims).length === 0) && access) {
+        claims = this.decodeJwt(access) || {};
+      }
+    }
+
     this.isLoggedIn = true;
-    this.userName = claims?.name || claims?.preferred_username || claims?.given_name || claims?.email || 'User';
-    this.userPicture = claims?.picture || null;
+    const name = this.firstClaim(claims, [
+      'name',
+      'preferred_username',
+      'given_name',
+      'email',
+      'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name',
+      'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+    ]);
+    const picture = this.firstClaim(claims, [
+      'picture'
+    ]);
+    const email = this.firstClaim(claims, [
+      'email',
+      'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+    ]);
+
+    this.userName = this.toPascalCase(name as string) || 'User';
+    this.userPicture = (picture as string) || null;
+    this.userEmail = (email as string) || null;
     this.cdr.detectChanges();
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    let dirty = false;
+    if (this.showQuizDropdown) { this.showQuizDropdown = false; dirty = true; }
+    if (this.showPracticeDropdown) { this.showPracticeDropdown = false; dirty = true; }
+    if (this.isProfileMenuOpen) { this.isProfileMenuOpen = false; dirty = true; }
+    if (dirty) this.cdr.detectChanges();
+  }
+
+  private decodeJwt(token: string): any | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const payload = parts[1]
+        .replace(/-/g, '+')
+        .replace(/_/g, '/');
+      const json = decodeURIComponent(atob(payload).split('').map(c =>
+        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      ).join(''));
+      return JSON.parse(json);
+    } catch {
+      return null;
+    }
+  }
+
+  private firstClaim(obj: any, keys: string[]): string | undefined {
+    for (const k of keys) {
+      if (obj && typeof obj[k] === 'string' && obj[k]) return obj[k];
+    }
+    return undefined;
+  }
+
+  private toPascalCase(input?: string | null): string {
+    if (!input) return '';
+    return input
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
   }
 
   private computeVisibleLinks() {
@@ -152,6 +221,8 @@ export class Header implements AfterViewInit, OnDestroy {
 
   closeOffcanvas() {
     this._offcanvasInstance?.hide();
+    this.mobileQuizOpen = false;
+    this.mobilePracticeOpen = false;
   }
 
   // Auth helpers
@@ -181,6 +252,43 @@ export class Header implements AfterViewInit, OnDestroy {
 
   toggleProfileMenu(event: Event) {
     event.preventDefault();
+    event.stopPropagation();
     this.isProfileMenuOpen = !this.isProfileMenuOpen;
+  }
+
+  toggleQuizDropdown(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.showQuizDropdown = !this.showQuizDropdown;
+    if (this.showQuizDropdown) this.showPracticeDropdown = false;
+    this.cdr.detectChanges();
+  }
+
+  togglePracticeDropdown(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.showPracticeDropdown = !this.showPracticeDropdown;
+    if (this.showPracticeDropdown) this.showQuizDropdown = false;
+    this.cdr.detectChanges();
+  }
+
+  goToSessions() {
+    this.isProfileMenuOpen = false;
+    this.showPracticeDropdown = false;
+    this.showQuizDropdown = false;
+    this.mobilePracticeOpen = false;
+    this.mobileQuizOpen = false;
+    this.router.navigate(['/sessions']);
+    this.cdr.detectChanges();
+  }
+
+  toggleMobileQuiz(event: Event) {
+    event.preventDefault();
+    this.mobileQuizOpen = !this.mobileQuizOpen;
+  }
+
+  toggleMobilePractice(event: Event) {
+    event.preventDefault();
+    this.mobilePracticeOpen = !this.mobilePracticeOpen;
   }
 }

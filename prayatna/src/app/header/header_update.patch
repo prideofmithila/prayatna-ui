@@ -1,0 +1,13 @@
+Update header to show user profile picture and name from ID token claims.
+
+Changes needed:
+1. In header.html line 42-43: Replace the Profile button with user picture/name display
+2. In header.html line 48: Update the greeting to show full name with picture
+3. In header.ts line 92-96: Add console logging to debug claims extraction
+
+Current ID token includes:
+- name: "prateek karna"  
+- picture: "https://lh3.googleusercontent.com/a/..."
+- email: "prateekkarna29@gmail.com"
+
+The oauthService.getIdentityClaims() should already be extracting these fields.

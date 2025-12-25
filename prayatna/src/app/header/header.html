@@ -20,8 +20,30 @@
       <!-- Center: Links (desktop only) -->
       <div class="flex-grow-1 d-none d-md-flex justify-content-center position-relative">
         <ul class="nav" #centerNav>
-          <li class="nav-item" *ngFor="let link of links | slice:0:visibleCount; let i = index">
-            <a class="nav-link" [routerLink]="link.route">{{ link.label }}</a>
+          <li class="nav-item" *ngFor="let link of links | slice:0:visibleCount; let i = index" [class.position-relative]="link.label === 'Daily Quiz' || link.label === 'Practice Tool'">
+            <!-- Regular links -->
+            <a class="nav-link" *ngIf="link.label !== 'Daily Quiz' && link.label !== 'Practice Tool'" [routerLink]="link.route">{{ link.label }}</a>
+
+            <!-- Daily Quiz dropdown (coming soon) -->
+            <a class="nav-link" href="#" *ngIf="link.label === 'Daily Quiz'" (click)="toggleQuizDropdown($event)">Daily Quiz</a>
+            <div class="quiz-menu card" *ngIf="link.label === 'Daily Quiz' && showQuizDropdown" (click)="$event.stopPropagation()">
+              <div class="card-body py-2 px-3">
+                <div class="small text-muted">Coming soon — hang tight!</div>
+              </div>
+            </div>
+
+            <!-- Practice Tool dropdown -->
+            <a class="nav-link" href="#" *ngIf="link.label === 'Practice Tool'" (click)="togglePracticeDropdown($event)">Practice Tools</a>
+            <div class="quiz-menu card" *ngIf="link.label === 'Practice Tool' && showPracticeDropdown" (click)="$event.stopPropagation()">
+              <div class="card-body p-0">
+                <div class="menu-list py-1">
+                  <button class="dropdown-item w-100 text-start" (click)="goToSessions()">
+                    <span class="material-icons me-2" style="font-size:18px;vertical-align:middle;">timer</span>
+                    Session Timer
+                  </button>
+                </div>
+              </div>
+            </div>
           </li>
         </ul>
         <!-- More button shown when there are overflowing links -->
@@ -40,13 +62,29 @@
       <div class="d-flex align-items-center" style="flex:0 0 auto;">
         <ng-container *ngIf="isLoggedIn; else signedOut">
           <div class="profile-wrapper d-flex align-items-center gap-2 position-relative">
-            <button class="btn btn-outline-secondary btn-sm" (click)="toggleProfileMenu($event)">Profile</button>
+            <button class="btn btn-link p-0" (click)="toggleProfileMenu($event)" aria-label="Open profile menu" style="border: 2px solid #dee2e6; border-radius: 50%; overflow: hidden;">
+              <img *ngIf="userPicture" [src]="userPicture" alt="Profile" style="width: 36px; height: 36px; object-fit: cover;" />
+              <span *ngIf="!userPicture" class="d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background: #e9ecef; color: #495057; font-weight: 600;">
+                {{ (userName || 'U').charAt(0) | uppercase }}
+              </span>
+            </button>
 
-            <div class="profile-menu card shadow-sm" *ngIf="isProfileMenuOpen">
-              <div class="card-body p-2">
-                <div class="px-2 py-1 text-muted">Hi {{ userName || 'User' }}</div>
+            <div class="profile-menu card" *ngIf="isProfileMenuOpen" (click)="$event.stopPropagation()">
+              <div class="card-body p-0">
+                <div class="user-summary d-flex align-items-center gap-2 px-3 py-2">
+                  <img *ngIf="userPicture" [src]="userPicture" alt="Profile" class="user-avatar" />
+                  <div class="min-w-0">
+                    <div class="fw-semibold text-truncate">{{ userName || 'User' }}</div>
+                    <div class="text-muted small text-truncate" *ngIf="userEmail">{{ userEmail }}</div>
+                  </div>
+                </div>
                 <hr class="my-2"/>
-                <button class="btn btn-link w-100 text-start px-2" (click)="signOut()">Sign out</button>
+                <div class="menu-list py-1">
+                  <button class="dropdown-item w-100 text-start text-danger" (click)="signOut()">
+                    <span class="material-icons me-2" style="font-size:18px;vertical-align:middle;">logout</span>
+                    Sign out
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -71,9 +109,32 @@
     <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
   </div>
   <div class="offcanvas-body" #offcanvasBody>
-    <ul class="nav flex-column">
+    <ul class="nav flex-column gap-1">
       <li class="nav-item" *ngFor="let link of offcanvasLinks">
-        <a class="nav-link" [routerLink]="link.route" (click)="closeOffcanvas()">{{ link.label }}</a>
+        <a class="nav-link" *ngIf="link.label === 'Home' || link.label === 'About'" [routerLink]="link.route" (click)="closeOffcanvas()">{{ link.label }}</a>
+
+        <div *ngIf="link.label === 'Daily Quiz'" class="w-100">
+          <button class="btn w-100 d-flex justify-content-between align-items-center px-0 nav-link text-start" (click)="toggleMobileQuiz($event)">
+            <span>Daily Quiz</span>
+            <span class="material-icons" style="font-size:18px;">{{ mobileQuizOpen ? 'expand_less' : 'expand_more' }}</span>
+          </button>
+          <div class="ps-3" *ngIf="mobileQuizOpen">
+            <div class="text-muted small py-1">Coming soon — hang tight!</div>
+          </div>
+        </div>
+
+        <div *ngIf="link.label === 'Practice Tool'" class="w-100">
+          <button class="btn w-100 d-flex justify-content-between align-items-center px-0 nav-link text-start" (click)="toggleMobilePractice($event)">
+            <span>Practice Tool</span>
+            <span class="material-icons" style="font-size:18px;">{{ mobilePracticeOpen ? 'expand_less' : 'expand_more' }}</span>
+          </button>
+          <div class="ps-3" *ngIf="mobilePracticeOpen">
+            <a class="nav-link nested-link" [routerLink]="'/sessions'" (click)="closeOffcanvas()">
+              <span class="material-icons" style="font-size:18px;">timer</span>
+              <span>Session Timer</span>
+            </a>
+          </div>
+        </div>
       </li>
     </ul>
   </div>
