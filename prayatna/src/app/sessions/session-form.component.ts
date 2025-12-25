@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormArray, FormBuilder, FormGroup, FormControl, Validators, AbstractControl } from '@angular/forms';
 import { PortalDirective } from '../shared/portal.directive';
 import { Router, ActivatedRoute } from '@angular/router';
+import { OAuthService } from 'angular-oauth2-oidc';
 import { SessionsService } from './sessions.service';
 import { Session, Task } from './session.model';
 import { Subscription } from 'rxjs';
@@ -39,10 +40,13 @@ export class SessionFormComponent implements OnInit, OnDestroy {
   taskModalErrors: { [key: string]: string } = {};
   subtaskModalErrors: { [key: string]: string } = {};
   sessionFormErrors: { [key: string]: string } = {};
+  
+  isLoggedIn = false;
+  showLocalStorageWarning = false;
 
   @ViewChild('sessionNameInput') sessionNameInput!: ElementRef<HTMLInputElement>;
 
-  constructor(private sessionsService: SessionsService, private fb: FormBuilder, private router: Router, private route: ActivatedRoute, private cdr: ChangeDetectorRef) {
+  constructor(private sessionsService: SessionsService, private fb: FormBuilder, private router: Router, private route: ActivatedRoute, private cdr: ChangeDetectorRef, private oauthService: OAuthService) {
     this.form = this.fb.group({
       sessionName: ['', [Validators.required, Validators.minLength(1)]],
       isTimed: [true],
@@ -90,6 +94,8 @@ export class SessionFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.isLoggedIn = this.oauthService.hasValidAccessToken();
+    
     this.subs.add(this.sessionsService.sessions$.subscribe(list => {
       this.sessions = list;
       if (this.editingIndex !== null && !this.loadedForEdit && this.sessions[this.editingIndex]) {
@@ -124,6 +130,15 @@ export class SessionFormComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
+  }
+
+  dismissLocalStorageWarning() {
+    this.showLocalStorageWarning = false;
+  }
+
+  goToLogin() {
+    this.showLocalStorageWarning = false;
+    this.router.navigate(['/login']);
   }
 
   // helpers
@@ -314,6 +329,13 @@ export class SessionFormComponent implements OnInit, OnDestroy {
 
   async save(){ 
     this.sessionFormErrors = {};
+    
+    // Show warning if not logged in
+    if (!this.isLoggedIn) {
+      this.showLocalStorageWarning = true;
+      // Don't return - allow them to save anyway after seeing the warning
+    }
+    
     // Validate session name
     const sessionNameVal = this.form.get('sessionName')?.value;
     if (!sessionNameVal?.trim()) { 

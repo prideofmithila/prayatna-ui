@@ -305,3 +305,24 @@
   </div>
 </div>
 <div class="modal-backdrop fade" [class.show]="showDeleteTaskModal" *ngIf="showDeleteTaskModal" (click)="cancelDeleteTask()" style="z-index:199999;"></div>
+
+<!-- Local Storage Warning Modal -->
+<div class="modal fade" [class.show]="showLocalStorageWarning" [style.display]="showLocalStorageWarning ? 'block' : 'none'" tabindex="-1" *ngIf="showLocalStorageWarning" style="z-index:200000;">
+  <div class="modal-dialog modal-dialog-centered" role="dialog" aria-modal="true">
+    <div class="modal-content" style="z-index:200001;">
+      <div class="modal-header border-0">
+        <h5 class="modal-title">Local Storage Notice</h5>
+        <button type="button" class="btn-close" (click)="dismissLocalStorageWarning()"></button>
+      </div>
+      <div class="modal-body">
+        <p>You are not logged in. This session will be saved on this device only and may be lost if browser cache or memory is cleared.</p>
+        <p class="mb-0">To save your sessions to your profile and access them from any device, please sign in.</p>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary" (click)="dismissLocalStorageWarning()">Continue Anyway</button>
+        <button type="button" class="btn btn-primary" (click)="goToLogin()">Sign In</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showLocalStorageWarning" *ngIf="showLocalStorageWarning" (click)="dismissLocalStorageWarning()" style="z-index:199999;"></div>

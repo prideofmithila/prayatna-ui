@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { OAuthService } from 'angular-oauth2-oidc';
 import { SessionsService } from './sessions.service';
 import { Session } from './session.model';
 
@@ -18,12 +19,27 @@ export class SessionsListComponent implements OnInit, OnDestroy {
   searchTerm = '';
   showDeleteModal = false;
   sessionToDelete: number | null = null;
-    errorMessage: string | null = null;
+  errorMessage: string | null = null;
+  showLocalStorageWarning = false;
+  isLoggedIn = false;
+  fromAddButton = false;
   private sub = new Subscription();
 
-  constructor(private sessionsService: SessionsService, private router: Router, private cdr: ChangeDetectorRef) {}
+  constructor(private sessionsService: SessionsService, private router: Router, private cdr: ChangeDetectorRef, private oauthService: OAuthService) {}
 
   ngOnInit(): void {
+    this.isLoggedIn = this.oauthService.hasValidAccessToken();
+    
+    // Show warning for non-logged-in users once per day
+    if (!this.isLoggedIn) {
+      const lastShown = localStorage.getItem('localStorageWarningLastShown');
+      const today = new Date().toDateString();
+      if (lastShown !== today) {
+        this.showLocalStorageWarning = true;
+        localStorage.setItem('localStorageWarningLastShown', today);
+      }
+    }
+    
     this.sub.add(this.sessionsService.sessions$.subscribe(s => {
       this.sessions = s;
       console.log('Sessions updated in list component:', s.length);
@@ -38,6 +54,19 @@ export class SessionsListComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.sub.unsubscribe();
+  }
+
+  dismissLocalStorageWarning() {
+    this.showLocalStorageWarning = false;
+    if (this.fromAddButton) {
+      this.fromAddButton = false;
+      this.router.navigate(['/sessions/new']);
+    }
+  }
+
+  goToLogin() {
+    this.showLocalStorageWarning = false;
+    this.router.navigate(['/login']);
   }
 
   get filteredSessions() {
@@ -55,7 +84,12 @@ export class SessionsListComponent implements OnInit, OnDestroy {
   }
 
   createNew() {
-    this.router.navigate(['/sessions/new']);
+    if (!this.isLoggedIn) {
+      this.fromAddButton = true;
+      this.showLocalStorageWarning = true;
+    } else {
+      this.router.navigate(['/sessions/new']);
+    }
   }
 
   view(i: number) {
