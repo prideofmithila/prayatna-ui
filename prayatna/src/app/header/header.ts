@@ -1,5 +1,5 @@
 import { Component, AfterViewInit, OnDestroy, ViewChild, ViewChildren, QueryList, ElementRef, ChangeDetectorRef, HostListener } from '@angular/core';
-import { RouterLink, Router } from '@angular/router';
+import { RouterLink, Router, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import Offcanvas from 'bootstrap/js/dist/offcanvas';
 import { OAuthService } from 'angular-oauth2-oidc';
@@ -8,7 +8,7 @@ import { SessionsService } from '../sessions/sessions.service';
 
 @Component({
   selector: 'app-header',
-  imports: [RouterLink, CommonModule],
+  imports: [RouterLink, RouterLinkActive, CommonModule],
   templateUrl: './header.html',
   styleUrl: './header.scss',
 })

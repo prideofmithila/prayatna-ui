@@ -19,13 +19,16 @@
 
       <!-- Center: Links (desktop only) -->
       <div class="flex-grow-1 d-none d-md-flex justify-content-center position-relative">
-        <ul class="nav" #centerNav>
+        <ul class="nav header-nav" #centerNav>
           <li class="nav-item" *ngFor="let link of links | slice:0:visibleCount; let i = index" [class.position-relative]="link.label === 'Daily Quiz' || link.label === 'Practice Tool'">
             <!-- Regular links -->
-            <a class="nav-link" *ngIf="link.label !== 'Daily Quiz' && link.label !== 'Practice Tool'" [routerLink]="link.route">{{ link.label }}</a>
+            <a class="nav-link" *ngIf="link.label !== 'Daily Quiz' && link.label !== 'Practice Tool'" [routerLink]="link.route" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ link.label }}</a>
 
             <!-- Daily Quiz dropdown (coming soon) -->
-            <a class="nav-link" href="#" *ngIf="link.label === 'Daily Quiz'" (click)="toggleQuizDropdown($event)">Daily Quiz</a>
+            <a class="nav-link has-icon" href="#" *ngIf="link.label === 'Daily Quiz'" (click)="toggleQuizDropdown($event)" [class.active]="showQuizDropdown">
+              <span class="material-icons nav-icon">quiz</span>
+              <span>Daily Quiz</span>
+            </a>
             <div class="quiz-menu card" *ngIf="link.label === 'Daily Quiz' && showQuizDropdown" (click)="$event.stopPropagation()">
               <div class="card-body py-2 px-3">
                 <div class="small text-muted">Coming soon — hang tight!</div>
@@ -33,7 +36,10 @@
             </div>
 
             <!-- Practice Tool dropdown -->
-            <a class="nav-link" href="#" *ngIf="link.label === 'Practice Tool'" (click)="togglePracticeDropdown($event)">Practice Tools</a>
+            <a class="nav-link has-icon" href="#" *ngIf="link.label === 'Practice Tool'" (click)="togglePracticeDropdown($event)" [class.active]="showPracticeDropdown">
+              <span class="material-icons nav-icon">bolt</span>
+              <span>Practice Tools</span>
+            </a>
             <div class="quiz-menu card" *ngIf="link.label === 'Practice Tool' && showPracticeDropdown" (click)="$event.stopPropagation()">
               <div class="card-body p-0">
                 <div class="menu-list py-1">
@@ -62,7 +68,7 @@
       <div class="d-flex align-items-center" style="flex:0 0 auto;">
         <ng-container *ngIf="isLoggedIn; else signedOut">
           <div class="profile-wrapper d-flex align-items-center gap-2 position-relative">
-            <button class="btn btn-link p-0" (click)="toggleProfileMenu($event)" aria-label="Open profile menu" style="border: 2px solid #dee2e6; border-radius: 50%; overflow: hidden;">
+            <button class="btn btn-link p-0 profile-trigger" (click)="toggleProfileMenu($event)" aria-label="Open profile menu">
               <img *ngIf="userPicture" [src]="userPicture" alt="Profile" style="width: 36px; height: 36px; object-fit: cover;" />
               <span *ngIf="!userPicture" class="d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border-radius: 50%; background: #e9ecef; color: #495057; font-weight: 600;">
                 {{ (userName || 'U').charAt(0) | uppercase }}
@@ -105,37 +111,48 @@
 <!-- Offcanvas menu (left) -->
 <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasMenu" aria-labelledby="offcanvasMenuLabel">
   <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="offcanvasMenuLabel">Menu</h5>
+    <h5 class="offcanvas-title" id="offcanvasMenuLabel">Prayatna</h5>
     <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
   </div>
   <div class="offcanvas-body" #offcanvasBody>
-    <ul class="nav flex-column gap-1">
-      <li class="nav-item" *ngFor="let link of offcanvasLinks">
-        <a class="nav-link" *ngIf="link.label === 'Home' || link.label === 'About'" [routerLink]="link.route" (click)="closeOffcanvas()">{{ link.label }}</a>
+    <div class="offcanvas-panel">
+      <ul class="nav flex-column gap-1">
+        <li class="nav-item" *ngFor="let link of offcanvasLinks">
+          <a class="nav-link" *ngIf="link.label === 'Home'" [routerLink]="link.route" (click)="closeOffcanvas()">
+            <span class="material-icons nav-icon">home</span>
+            <span>{{ link.label }}</span>
+          </a>
+          <a class="nav-link" *ngIf="link.label === 'About'" [routerLink]="link.route" (click)="closeOffcanvas()">
+            <span class="material-icons nav-icon">info</span>
+            <span>{{ link.label }}</span>
+          </a>
 
-        <div *ngIf="link.label === 'Daily Quiz'" class="w-100">
-          <button class="btn w-100 d-flex justify-content-between align-items-center px-0 nav-link text-start" (click)="toggleMobileQuiz($event)">
-            <span>Daily Quiz</span>
-            <span class="material-icons" style="font-size:18px;">{{ mobileQuizOpen ? 'expand_less' : 'expand_more' }}</span>
-          </button>
-          <div class="ps-3" *ngIf="mobileQuizOpen">
-            <div class="text-muted small py-1">Coming soon — hang tight!</div>
+          <div *ngIf="link.label === 'Daily Quiz'" class="w-100">
+            <button class="btn w-100 nav-link text-start nav-row" (click)="toggleMobileQuiz($event)">
+              <span class="nav-icon-col"><span class="material-icons nav-icon">quiz</span></span>
+              <span class="nav-text">Daily Quiz</span>
+              <span class="nav-caret material-icons">{{ mobileQuizOpen ? 'expand_less' : 'expand_more' }}</span>
+            </button>
+            <div class="ps-4" *ngIf="mobileQuizOpen">
+              <div class="text-muted small py-2 rounded-2 bg-light">Coming soon — hang tight!</div>
+            </div>
           </div>
-        </div>
 
-        <div *ngIf="link.label === 'Practice Tool'" class="w-100">
-          <button class="btn w-100 d-flex justify-content-between align-items-center px-0 nav-link text-start" (click)="toggleMobilePractice($event)">
-            <span>Practice Tool</span>
-            <span class="material-icons" style="font-size:18px;">{{ mobilePracticeOpen ? 'expand_less' : 'expand_more' }}</span>
-          </button>
-          <div class="ps-3" *ngIf="mobilePracticeOpen">
-            <a class="nav-link nested-link" [routerLink]="'/sessions'" (click)="closeOffcanvas()">
-              <span class="material-icons" style="font-size:18px;">timer</span>
-              <span>Session Timer</span>
-            </a>
+          <div *ngIf="link.label === 'Practice Tool'" class="w-100">
+            <button class="btn w-100 nav-link text-start nav-row" (click)="toggleMobilePractice($event)">
+              <span class="nav-icon-col"><span class="material-icons nav-icon">bolt</span></span>
+              <span class="nav-text">Practice Tool</span>
+              <span class="nav-caret material-icons">{{ mobilePracticeOpen ? 'expand_less' : 'expand_more' }}</span>
+            </button>
+            <div class="ps-4" *ngIf="mobilePracticeOpen">
+              <a class="nav-link nested-link" [routerLink]="'/sessions'" (click)="closeOffcanvas()">
+                <span class="material-icons" style="font-size:18px;">timer</span>
+                <span>Session Timer</span>
+              </a>
+            </div>
           </div>
-        </div>
-      </li>
-    </ul>
+        </li>
+      </ul>
+    </div>
   </div>
 </div>
