@@ -52,7 +52,6 @@ export class SessionsService {
   isLoggedIn(): boolean {
     try {
       const hasToken = this.oauth.hasValidAccessToken();
-      console.log('isLoggedIn check:', hasToken, 'Token:', this.oauth.getAccessToken()?.substring(0, 20));
       return hasToken;
     } catch {
       return false;
@@ -64,21 +63,16 @@ export class SessionsService {
   }
 
   async refreshSessions(): Promise<void> {
-    console.log('🔄 refreshSessions called, isLoggedIn:', this.isLoggedIn());
     const localSessions = this.loadLocal();
-    console.log('📦 Loaded from localStorage:', localSessions.length, localSessions.map(s => s.sessionName + (s.id ? ` (id:${s.id})` : ' (no-id)')));
     
     if (!this.isLoggedIn() || !this.baseUrl) {
       // Not logged in - fetch public predefined sessions and merge with local
-      console.log('Not logged in, fetching public predefined sessions...');
       try {
         const publicSessions = await firstValueFrom(this.http.get<ApiSession[]>(`${this.baseUrl}/api/Sessions/public`));
         const mappedPublicSessions = (publicSessions || []).map(dto => this.fromDto(dto));
-        console.log('Public sessions received:', mappedPublicSessions.length);
         
         // Merge public predefined with local storage sessions
         const combined = [...mappedPublicSessions, ...localSessions];
-        console.log('Combined sessions (public + local):', combined.length);
         this.sessionsSubject.next(combined);
       } catch (err) {
         console.error('Failed to fetch public sessions, showing only local storage', err);
@@ -89,21 +83,16 @@ export class SessionsService {
 
     try {
       // Logged in - fetch from API (backend filters hidden sessions)
-      console.log('Logged in, fetching from API...');
       const apiSessions = await firstValueFrom(this.http.get<ApiSession[]>(`${this.baseUrl}/api/sessions`, { headers: this.authHeaders() }));
       const mappedApiSessions = (apiSessions || []).map(dto => this.fromDto(dto));
-      console.log('API sessions received:', mappedApiSessions.length);
       
       // Merge with local-only sessions (sessions without IDs are local-only)
       const localOnlySessions = localSessions.filter(s => !s.id);
-      console.log('📦 Local-only sessions (no IDs):', localOnlySessions.length, localOnlySessions.map(s => s.sessionName));
       const combined = [...mappedApiSessions, ...localOnlySessions];
-      console.log('Combined sessions:', combined.length);
       
       this.sessionsSubject.next(combined);
       // Don't save API sessions to local storage - only local-only sessions
       this.saveLocal(localOnlySessions);
-      console.log('💾 Saved local-only sessions back to localStorage');
     } catch (err) {
       console.error('Failed to load sessions from API, falling back to local storage', err);
       this.sessionsSubject.next(localSessions);
@@ -155,28 +144,19 @@ export class SessionsService {
   async deleteSession(index: number): Promise<void> {
     const current = this.getSnapshot();
     const target = current[index];
-    console.log('🗑️ deleteSession called - index:', index, 'target:', target?.sessionName, 'hasId:', !!target?.id, 'isPredefined:', target?.isPredefined, 'isLoggedIn:', this.isLoggedIn());
-    
-    if (!target) {
-      console.log('❌ No target found at index', index);
-      return;
-    }
+    if (!target) return;
 
     // Guests can delete only local-only sessions (no id)
     if (!this.isLoggedIn()) {
-      console.log('👤 Guest user deletion path');
       if (target.id) {
         throw new Error('This session is synced or system-generated. Please sign in to manage it.');
       }
       // Local-only: remove matching entry from local storage
       const localSessions = this.loadLocal();
-      console.log('📦 Local sessions before delete:', localSessions.length);
       const matchIdx = localSessions.findIndex(ls => JSON.stringify(ls) === JSON.stringify(target));
-      console.log('🔍 Match index in localStorage:', matchIdx);
       if (matchIdx >= 0) {
         localSessions.splice(matchIdx, 1);
         this.saveLocal(localSessions);
-        console.log('✅ Deleted from localStorage, remaining:', localSessions.length);
         const updatedSnapshot = current.filter((_, i) => i !== index);
         this.sessionsSubject.next(updatedSnapshot);
       }
@@ -185,14 +165,12 @@ export class SessionsService {
 
     // If it's a predefined session, use toggle-visibility API endpoint
     if (target.isPredefined && target.id) {
-      console.log('🔒 Predefined session deletion path');
       if (this.isLoggedIn() && this.baseUrl) {
         try {
           await firstValueFrom(this.http.post(`${this.baseUrl}/api/Sessions/${target.id}/toggle-visibility`, {}, { headers: this.authHeaders() }));
           // Remove from current list after successful API call
           const updated = current.filter((_, i) => i !== index);
           this.sessionsSubject.next(updated);
-          console.log('✅ Predefined session hidden via API');
           return;
         } catch (err) {
           console.error('API toggle-visibility failed; storing preference locally', err);
@@ -209,13 +187,11 @@ export class SessionsService {
     }
 
     if (this.isLoggedIn() && this.baseUrl && target.id) {
-      console.log('🌐 API session deletion path');
       try {
         await firstValueFrom(this.http.delete(`${this.baseUrl}/api/sessions/${target.id}`, { headers: this.authHeaders() }));
         // Remove from current list without calling refreshSessions to avoid double fetch
         const updated = current.filter((_, i) => i !== index);
         this.sessionsSubject.next(updated);
-        console.log('✅ Deleted from API');
         // Don't update local storage for API sessions
         return;
       } catch (err) {
@@ -227,33 +203,24 @@ export class SessionsService {
     // Local-only session deletion (logged in user with local-only session)
     // This happens when a user created a session before login and now wants to delete it
     if (this.isLoggedIn() && !target.id) {
-      console.log('💾 Local-only session deletion for logged-in user');
       const localSessions = this.loadLocal();
-      console.log('📦 Local sessions before delete:', localSessions.length, localSessions.map(s => s.sessionName));
       const matchIdx = localSessions.findIndex(ls => JSON.stringify(ls) === JSON.stringify(target));
-      console.log('🔍 Match index in localStorage:', matchIdx);
       if (matchIdx >= 0) {
         localSessions.splice(matchIdx, 1);
         this.saveLocal(localSessions);
-        console.log('✅ Deleted from localStorage, remaining:', localSessions.length, localSessions.map(s => s.sessionName));
-      } else {
-        console.log('⚠️ Session not found in localStorage');
       }
       // Remove from current snapshot
       const updated = current.filter((_, i) => i !== index);
-      console.log('📊 Updated snapshot:', updated.length, updated.map(s => s.sessionName));
       this.sessionsSubject.next(updated);
       return;
     }
 
-    console.log('⚠️ Fallback deletion path');
     // Fallback: Local deletion (unauthenticated or API failed)
     const sessions = this.loadLocal();
     if (index >= 0 && index < sessions.length) {
       sessions.splice(index, 1);
       this.saveLocal(sessions);
       this.sessionsSubject.next(sessions);
-      console.log('✅ Deleted via fallback path');
     }
   }
 

@@ -364,7 +364,7 @@ export class SessionTimerComponent implements OnInit, OnDestroy {
   private playAlarm(): void {
     if (this.alarmAudio && this.isRunning) {
       this.alarmAudio.currentTime = 0;
-      this.alarmAudio.play().catch(err => console.log('Audio play failed:', err));
+      this.alarmAudio.play().catch(() => {});
       
       // Stop audio after 5 seconds
       this.alarmTimeout = setTimeout(() => {

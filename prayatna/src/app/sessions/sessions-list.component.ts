@@ -43,7 +43,6 @@ export class SessionsListComponent implements OnInit, OnDestroy {
     
     this.sub.add(this.sessionsService.sessions$.subscribe(s => {
       this.sessions = s;
-      console.log('Sessions updated in list component:', s.length);
       this.isLoading = false;
       this.cdr.detectChanges();
     }));
