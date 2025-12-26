@@ -7,6 +7,7 @@ import { environment } from '../../environments/environment';
 import { Session, Task, Subtask } from './session.model';
 
 const STORAGE_KEY = 'prayatna.sessions.v1';
+const HIDDEN_SESSIONS_KEY = 'prayatna.hiddenSessions.v1';
 
 interface ApiSubtask {
   id?: number;
@@ -31,6 +32,11 @@ interface ApiSession {
   durationSeconds?: number;
   totalDuration?: number;
   tasks?: ApiTask[];
+}
+
+interface SessionVisibilityResponse {
+  sessionId: number;
+  isHidden: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -61,14 +67,26 @@ export class SessionsService {
     const localSessions = this.loadLocal();
     
     if (!this.isLoggedIn() || !this.baseUrl) {
-      // Not logged in - only show local storage sessions
-      console.log('Not logged in, showing local sessions:', localSessions.length);
-      this.sessionsSubject.next(localSessions);
+      // Not logged in - fetch public predefined sessions and merge with local
+      console.log('Not logged in, fetching public predefined sessions...');
+      try {
+        const publicSessions = await firstValueFrom(this.http.get<ApiSession[]>(`${this.baseUrl}/api/Sessions/public`));
+        const mappedPublicSessions = (publicSessions || []).map(dto => this.fromDto(dto));
+        console.log('Public sessions received:', mappedPublicSessions.length);
+        
+        // Merge public predefined with local storage sessions
+        const combined = [...mappedPublicSessions, ...localSessions];
+        console.log('Combined sessions (public + local):', combined.length);
+        this.sessionsSubject.next(combined);
+      } catch (err) {
+        console.error('Failed to fetch public sessions, showing only local storage', err);
+        this.sessionsSubject.next(localSessions);
+      }
       return;
     }
 
     try {
-      // Logged in - fetch from API
+      // Logged in - fetch from API (backend filters hidden sessions)
       console.log('Logged in, fetching from API...');
       const apiSessions = await firstValueFrom(this.http.get<ApiSession[]>(`${this.baseUrl}/api/sessions`, { headers: this.authHeaders() }));
       const mappedApiSessions = (apiSessions || []).map(dto => this.fromDto(dto));
@@ -88,7 +106,7 @@ export class SessionsService {
     }
   }
 
-  async saveSession(session: Session, index?: number): Promise<Session> {
+  async saveSession(session: Session, index?: number, original?: Session): Promise<Session> {
     if (this.isLoggedIn() && this.baseUrl) {
       const dto = this.toDto(session);
       try {
@@ -109,8 +127,19 @@ export class SessionsService {
 
     // Local storage path (unauthenticated only)
     const sessions = this.loadLocal();
+    let targetIndex = -1;
+
     if (typeof index === 'number' && index >= 0 && index < sessions.length) {
-      sessions[index] = session;
+      targetIndex = index;
+    }
+
+    if (targetIndex < 0 && original) {
+      const originalSerialized = JSON.stringify(original);
+      targetIndex = sessions.findIndex(s => JSON.stringify(s) === originalSerialized);
+    }
+
+    if (targetIndex >= 0) {
+      sessions[targetIndex] = session;
     } else {
       sessions.push(session);
     }
@@ -123,6 +152,46 @@ export class SessionsService {
     const current = this.getSnapshot();
     const target = current[index];
     if (!target) return;
+
+    // Guests can delete only local-only sessions (no id)
+    if (!this.isLoggedIn()) {
+      if (target.id) {
+        throw new Error('This session is synced or system-generated. Please sign in to manage it.');
+      }
+      // Local-only: remove matching entry from local storage
+      const localSessions = this.loadLocal();
+      const matchIdx = localSessions.findIndex(ls => JSON.stringify(ls) === JSON.stringify(target));
+      if (matchIdx >= 0) {
+        localSessions.splice(matchIdx, 1);
+        this.saveLocal(localSessions);
+        const updatedSnapshot = current.filter((_, i) => i !== index);
+        this.sessionsSubject.next(updatedSnapshot);
+      }
+      return;
+    }
+
+    // If it's a predefined session, use toggle-visibility API endpoint
+    if (target.isPredefined && target.id) {
+      if (this.isLoggedIn() && this.baseUrl) {
+        try {
+          await firstValueFrom(this.http.post(`${this.baseUrl}/api/Sessions/${target.id}/toggle-visibility`, {}, { headers: this.authHeaders() }));
+          // Remove from current list after successful API call
+          const updated = current.filter((_, i) => i !== index);
+          this.sessionsSubject.next(updated);
+          return;
+        } catch (err) {
+          console.error('API toggle-visibility failed; storing preference locally', err);
+          // Fall back to local storage if API fails
+          this.hideSession(target.id);
+          const updated = current.filter((_, i) => i !== index);
+          this.sessionsSubject.next(updated);
+          return;
+        }
+      } else {
+        // Guest user trying to delete predefined session - throw error
+        throw new Error('Please sign in to hide system-generated sessions from your profile. System-generated sessions cannot be deleted by guest users.');
+      }
+    }
 
     if (this.isLoggedIn() && this.baseUrl && target.id) {
       try {
@@ -152,6 +221,31 @@ export class SessionsService {
     const localSessions = this.loadLocal().filter(s => !s.id);
     this.saveLocal(localSessions);
     this.sessionsSubject.next(localSessions);
+  }
+
+  private getHiddenSessionIds(): number[] {
+    try {
+      const stored = localStorage.getItem(HIDDEN_SESSIONS_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private saveHiddenSessionIds(ids: number[]): void {
+    try {
+      localStorage.setItem(HIDDEN_SESSIONS_KEY, JSON.stringify(ids));
+    } catch (err) {
+      console.error('Failed to save hidden sessions', err);
+    }
+  }
+
+  private hideSession(sessionId: number): void {
+    const hidden = this.getHiddenSessionIds();
+    if (!hidden.includes(sessionId)) {
+      hidden.push(sessionId);
+      this.saveHiddenSessionIds(hidden);
+    }
   }
 
   exportJson(sessions: Session[]) {
@@ -212,7 +306,8 @@ export class SessionsService {
       description: dto.description,
       isTimed: true,
       totalDuration: (dto.totalDuration ?? dto.durationSeconds) || this.computeTotal(tasks),
-      tasks
+      tasks,
+      isPredefined: dto.isPredefined || false
     };
   }
 

@@ -22,4 +22,5 @@ export interface Session {
   isTimed: boolean;
   totalDuration?: number; // seconds
   tasks: Task[];
+  isPredefined?: boolean;
 }

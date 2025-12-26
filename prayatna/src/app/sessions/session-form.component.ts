@@ -18,7 +18,9 @@ import { Subscription } from 'rxjs';
 export class SessionFormComponent implements OnInit, OnDestroy {
   sessions: Session[] = [];
   editingIndex: number | null = null;
+  currentSession: Session | null = null;
   isViewMode = false;
+  isEditMode = false;
   form: FormGroup;
 
   taskModalOpen = false;
@@ -26,9 +28,14 @@ export class SessionFormComponent implements OnInit, OnDestroy {
   editingTaskIndex: number | null = null;
   editingSubtaskIndex: number | null = null;
   showDeleteSessionModal = false;
+  showEditBlockedModal = false;
   showDeleteTaskModal = false;
   taskToDelete: number | null = null;
   private reopenTaskModalAfterSubtask = false;
+  private cloningPredefined = false;
+  clonedFromPredefinedNotice = false;
+  showPredefinedLocalEditModal = false;
+  private localEditPendingNavigation = false;
 
   taskModalForm: FormGroup;
   subtaskModalForm: FormGroup;
@@ -41,8 +48,16 @@ export class SessionFormComponent implements OnInit, OnDestroy {
   subtaskModalErrors: { [key: string]: string } = {};
   sessionFormErrors: { [key: string]: string } = {};
   
+  get deleteBlocked(): boolean {
+    if (!this.isLoggedIn) {
+      return !!this.currentSession?.id; // allow deleting local-only sessions (no id)
+    }
+    return false;
+  }
+
   isLoggedIn = false;
   showLocalStorageWarning = false;
+  isSaving = false;
 
   @ViewChild('sessionNameInput') sessionNameInput!: ElementRef<HTMLInputElement>;
 
@@ -95,6 +110,8 @@ export class SessionFormComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.isLoggedIn = this.oauthService.hasValidAccessToken();
+    const navState = this.router.getCurrentNavigation()?.extras.state as { [key: string]: any } | undefined;
+    this.clonedFromPredefinedNotice = !!(navState?.['clonedFromPredefined'] || (window.history.state && window.history.state['clonedFromPredefined']));
     
     this.subs.add(this.sessionsService.sessions$.subscribe(list => {
       this.sessions = list;
@@ -104,11 +121,14 @@ export class SessionFormComponent implements OnInit, OnDestroy {
         if (this.isViewMode) {
           this.form.disable({ emitEvent: false });
         }
+        void this.handlePredefinedEditRedirect();
       }
     }));
 
     this.subs.add(this.route.paramMap.subscribe(pm => {
-      this.isViewMode = (this.route.snapshot.routeConfig?.path || '').includes('view');
+      const routePath = this.route.snapshot.routeConfig?.path || '';
+      this.isViewMode = routePath.includes('view');
+      this.isEditMode = routePath.includes('edit');
       const id = pm.get('id');
       if (id !== null) {
         const idx = Number(id);
@@ -120,6 +140,7 @@ export class SessionFormComponent implements OnInit, OnDestroy {
             if (this.isViewMode) {
               this.form.disable({ emitEvent: false });
             }
+            void this.handlePredefinedEditRedirect();
           }
         }
       }
@@ -325,21 +346,17 @@ export class SessionFormComponent implements OnInit, OnDestroy {
     return `${h}h ${m}m ${s}s`;
   }
   
-  loadForEdit(idx:number){ const s=this.sessions[idx]; this.editingIndex=idx; const total=s.totalDuration||0; const h=Math.floor(total/3600); const m=Math.floor((total%3600)/60); const sec=total%60; this.form.patchValue({ sessionName: s.sessionName, isTimed: s.isTimed, totalDuration: s.totalDuration||0, durationHours:h, durationMinutes:m, durationSeconds:sec }); while(this.tasks.length) this.tasks.removeAt(0); s.tasks.forEach(t=>this.addTask(t)); }
+  loadForEdit(idx:number){ const s=this.sessions[idx]; this.editingIndex=idx; this.currentSession=s; const total=s.totalDuration||0; const h=Math.floor(total/3600); const m=Math.floor((total%3600)/60); const sec=total%60; this.form.patchValue({ sessionName: s.sessionName, isTimed: s.isTimed, totalDuration: s.totalDuration||0, durationHours:h, durationMinutes:m, durationSeconds:sec }); while(this.tasks.length) this.tasks.removeAt(0); s.tasks.forEach(t=>this.addTask(t)); }
 
   async save(){ 
     this.sessionFormErrors = {};
-    
-    // Show warning if not logged in
-    if (!this.isLoggedIn) {
-      this.showLocalStorageWarning = true;
-      // Don't return - allow them to save anyway after seeing the warning
-    }
+    this.isSaving = true;
     
     // Validate session name
     const sessionNameVal = this.form.get('sessionName')?.value;
     if (!sessionNameVal?.trim()) { 
-      this.sessionFormErrors['sessionName'] = 'Session name is required'; 
+      this.sessionFormErrors['sessionName'] = 'Session name is required';
+      this.isSaving = false;
       return; 
     }
     
@@ -363,7 +380,7 @@ export class SessionFormComponent implements OnInit, OnDestroy {
     };
 
     try {
-      await this.sessionsService.saveSession(session, this.editingIndex ?? undefined);
+      await this.sessionsService.saveSession(session, this.editingIndex ?? undefined, this.currentSession || undefined);
       await this.sessionsService.refreshSessions();
       this.router.navigate(['/sessions']);
     } catch (err) {
@@ -376,6 +393,8 @@ export class SessionFormComponent implements OnInit, OnDestroy {
       }, 0);
       try { this.cdr.detectChanges(); } catch {}
       console.error('Save failed:', err);
+    } finally {
+      this.isSaving = false;
     }
   }
 
@@ -398,9 +417,9 @@ export class SessionFormComponent implements OnInit, OnDestroy {
       await this.sessionsService.deleteSession(this.editingIndex);
       this.showDeleteSessionModal = false;
       this.router.navigate(['/sessions']);
-    } catch (err) {
+    } catch (err: any) {
       this.showDeleteSessionModal = false;
-      const message = 'Server issue: unable to delete right now. Please try again later.';
+      const message = err?.message || 'Server issue: unable to delete right now. Please try again later.';
       this.sessionFormErrors = { ...this.sessionFormErrors, api: message };
       setTimeout(() => {
         try { document.getElementById('session-api-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
@@ -413,7 +432,25 @@ export class SessionFormComponent implements OnInit, OnDestroy {
   cancelDeleteSession() {
     this.showDeleteSessionModal = false;
   }
-  
+
+  onEditClick() {
+    if (this.currentSession?.isPredefined) {
+      this.showPredefinedLocalEditModal = true;
+      return;
+    }
+    this.goToEdit();
+  }
+
+  confirmPredefinedLocalEdit() {
+    this.showPredefinedLocalEditModal = false;
+    void this.createLocalCopyAndNavigate();
+  }
+
+  closePredefinedLocalEditModal() {
+    this.showPredefinedLocalEditModal = false;
+  }
+
+
   deleteTask(index: number) {
     this.taskToDelete = index;
     this.taskModalOpen = false;
@@ -439,6 +476,54 @@ export class SessionFormComponent implements OnInit, OnDestroy {
   playSession(){ 
     if (this.editingIndex !== null) {
       this.router.navigate(['/sessions', this.editingIndex, 'timer']);
+    }
+  }
+
+  private async handlePredefinedEditRedirect() {
+    if (!this.isEditMode || this.isViewMode || this.clonedFromPredefinedNotice) return;
+    if (!this.isLoggedIn || !this.currentSession?.isPredefined) return;
+    if (this.localEditPendingNavigation) return;
+    this.showPredefinedLocalEditModal = true;
+  }
+
+  private buildPredefinedClone(): Session | null {
+    if (!this.currentSession) return null;
+    const copy: Session = JSON.parse(JSON.stringify(this.currentSession));
+    copy.id = undefined;
+    copy.isPredefined = false;
+    copy.sessionName = copy.sessionName ? `${copy.sessionName} (copy)` : 'Session (copy)';
+    copy.tasks = (copy.tasks || []).map(t => ({
+      ...t,
+      id: undefined,
+      subtasks: (t.subtasks || []).map(st => ({ ...st, id: undefined }))
+    }));
+    return copy;
+  }
+
+  private async createLocalCopyAndNavigate() {
+    if (this.cloningPredefined) return;
+    const clone = this.buildPredefinedClone();
+    if (!clone) return;
+    this.cloningPredefined = true;
+    this.localEditPendingNavigation = true;
+    try {
+      const saved = await this.sessionsService.saveSession(clone);
+      await this.sessionsService.refreshSessions();
+      const snapshot = this.sessionsService.getSnapshot();
+      let targetIndex = saved.id ? snapshot.findIndex(s => s.id === saved.id) : snapshot.findIndex(s => !s.id && s.sessionName === clone.sessionName);
+      if (targetIndex < 0) {
+        targetIndex = snapshot.length ? snapshot.length - 1 : 0;
+      }
+      this.router.navigate(['/sessions', targetIndex, 'edit'], { state: { clonedFromPredefined: true } });
+    } catch (err) {
+      const message = this.resolveApiErrorMessage(err);
+      this.sessionFormErrors = { ...this.sessionFormErrors, api: message };
+      setTimeout(() => {
+        try { document.getElementById('session-api-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
+      }, 0);
+    } finally {
+      this.cloningPredefined = false;
+      this.localEditPendingNavigation = false;
     }
   }
 

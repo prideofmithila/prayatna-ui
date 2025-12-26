@@ -57,11 +57,24 @@
   }
 
   .card-inner { display: flex; flex-direction: column; gap: 10px; }
-  .session-title { 
+  .session-title-wrap { min-width: 0; }
+  .session-title-block { display: flex; flex-direction: row; gap: 6px; align-items: center; min-width: 0; }
+  .session-title-main { 
     font-weight: 700; 
     font-size: 1.1rem; 
     color: #0f172a;
     letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .session-title-suffix {
+    font-size: 0.8rem;
+    color: #475569;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
   }
 
   .duration { 
@@ -238,7 +251,9 @@
     .session-card .icon-btn { display: none; }
     .session-card .card-inner { align-items: center; text-align: center; gap: 10px; }
     .session-card .card-inner > .d-flex { justify-content: center; }
-    .session-card .session-title { text-align: center; }
+    .session-title-block { flex-direction: column; gap: 2px; align-items: center; text-align: center; }
+    .session-title-main { white-space: normal; }
+    .session-title-suffix { font-size: 0.75rem; color: #64748b; }
     .session-card .duration { justify-content: center; gap: 8px; }
   }
 }

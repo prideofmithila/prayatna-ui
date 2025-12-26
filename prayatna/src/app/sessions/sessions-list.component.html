@@ -24,8 +24,11 @@
           <div class="session-card">
             <div class="card-inner" (click)="view(i)" style="cursor:pointer">
               <div class="d-flex justify-content-between align-items-start">
-                <div>
-                  <div class="session-title">{{ s.sessionName }}</div>
+                <div class="d-flex align-items-center gap-2 session-title-wrap">
+                  <div class="session-title-block">
+                    <div class="session-title-main">{{ s.sessionName }}</div>
+                    <div *ngIf="s.isPredefined" class="session-title-suffix">System Generated</div>
+                  </div>
                 </div>
                 <button class="icon-btn" title="Play" (click)="play(i); $event.stopPropagation();">
                   <span class="material-icons">play_arrow</span>
@@ -48,10 +51,15 @@
 <div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
   <div class="modal-card small" (click)="$event.stopPropagation()">
     <h5>Confirm Delete</h5>
-    <p>Are you sure you want to delete this session? This action cannot be undone.</p>
+    <ng-container *ngIf="!deleteBlocked; else predefinedBlockedMsg">
+      <p>Are you sure you want to delete this session? This action cannot be undone.</p>
+    </ng-container>
+    <ng-template #predefinedBlockedMsg>
+      <p class="mb-0 text-danger fw-semibold">This session is synced or system-generated. Sign in to manage it.</p>
+    </ng-template>
     <div class="d-flex gap-2 justify-content-end mt-3">
       <button type="button" class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
-      <button type="button" class="btn btn-danger" (click)="confirmDelete()">Delete</button>
+      <button type="button" class="btn btn-danger" (click)="confirmDelete()" [disabled]="deleteBlocked" [class.disabled]="deleteBlocked">Delete</button>
     </div>
   </div>
 </div>

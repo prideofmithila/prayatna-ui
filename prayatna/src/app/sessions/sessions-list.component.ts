@@ -70,6 +70,15 @@ export class SessionsListComponent implements OnInit, OnDestroy {
     this.router.navigate(['/login']);
   }
 
+  get deleteBlocked(): boolean {
+    const idx = this.sessionToDelete;
+    if (!this.isLoggedIn && idx !== null && idx >= 0 && idx < this.sessions.length) {
+      const target = this.sessions[idx];
+      return !!target?.id; // allow deleting local-only (no id), block API/system sessions
+    }
+    return false;
+  }
+
   get filteredSessions() {
     const q = (this.searchTerm || '').trim().toLowerCase();
     if (!q) return this.sessions;
@@ -132,8 +141,8 @@ export class SessionsListComponent implements OnInit, OnDestroy {
         await this.sessionsService.deleteSession(this.sessionToDelete);
         this.errorMessage = null;
         this.sessionToDelete = null;
-      } catch (err) {
-        this.errorMessage = 'Failed to delete session. Please try again.';
+      } catch (err: any) {
+        this.errorMessage = err?.message || 'Failed to delete session. Please try again.';
         console.error('Delete failed:', err);
       }
     }

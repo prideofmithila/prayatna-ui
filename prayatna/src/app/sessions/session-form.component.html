@@ -4,9 +4,13 @@
       <strong>Error:</strong> {{ sessionFormErrors['api'] }}
     </div>
 
+    <div class="alert alert-info mb-4" role="status" *ngIf="!isSaving && isLoggedIn && isEditMode && currentSession?.isPredefined">
+      You're editing a copy of a system-generated session. The original template stays unchanged.
+    </div>
+
     <ng-container *ngIf="isViewMode; else editHeader">
       <div class="d-flex justify-content-center mb-4 summary-actions gap-3">
-        <button type="button" class="btn btn-link p-2 text-secondary" title="Edit" (click)="goToEdit()">
+        <button type="button" class="btn btn-link p-2 text-secondary" title="Edit" (click)="onEditClick()">
           <span class="material-icons" style="font-size: 26px;">edit</span>
         </button>
         <button type="button" class="btn btn-link p-2 text-primary" title="Play" (click)="playSession()">
@@ -20,8 +24,9 @@
       <div class="view-summary-card mb-4 d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-3">
           <span class="material-icons text-primary" style="font-size: 30px;">play_arrow</span>
-          <div>
+          <div class="d-flex flex-column gap-1">
             <h3 class="mb-0" style="font-size: 1.3rem; font-weight: 700;">{{ form.get('sessionName')?.value || 'Untitled Session' }}</h3>
+            <div *ngIf="currentSession?.isPredefined" class="text-muted fw-semibold" style="font-size: 0.9rem;">System Generated</div>
           </div>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -284,11 +289,16 @@
         <button type="button" class="btn-close" (click)="cancelDeleteSession()"></button>
       </div>
       <div class="modal-body pt-2">
-        <p class="mb-0" style="color: #475569;">Are you sure you want to delete this session? This action cannot be undone.</p>
+        <ng-container *ngIf="!deleteBlocked; else predefinedBlockedMsgView">
+          <p class="mb-0" style="color: #475569;">Are you sure you want to delete this session? This action cannot be undone.</p>
+        </ng-container>
+        <ng-template #predefinedBlockedMsgView>
+          <p class="mb-0 text-danger fw-semibold">This session is system-generated. Sign in to remove it from your profile.</p>
+        </ng-template>
       </div>
       <div class="modal-footer border-0 d-flex gap-3">
         <button type="button" class="btn btn-outline-secondary flex-grow-1" (click)="cancelDeleteSession()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Cancel</button>
-        <button type="button" class="btn btn-danger flex-grow-1" (click)="confirmDeleteSession()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Delete</button>
+        <button type="button" class="btn btn-danger flex-grow-1" (click)="confirmDeleteSession()" [disabled]="deleteBlocked" [class.disabled]="deleteBlocked" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Delete</button>
       </div>
     </div>
   </div>
@@ -330,5 +340,30 @@
       <div class="modal-footer border-0 d-flex gap-3">
         <button type="button" class="btn btn-outline-secondary flex-grow-1" (click)="dismissLocalStorageWarning()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Continue as Guest</button>
         <button type="button" class="btn btn-primary flex-grow-1" (click)="goToLogin()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Sign In</button>
+      </div>
+    </div>
+  </div>
 </div>
-<div class="modal-backdrop fade" [class.show]="showLocalStorageWarning" *ngIf="showLocalStorageWarning" (click)="dismissLocalStorageWarning()" style="z-index:199999;"></div></div>
+<div class="modal-backdrop fade" [class.show]="showLocalStorageWarning" *ngIf="showLocalStorageWarning" (click)="dismissLocalStorageWarning()" style="z-index:199999;"></div>
+
+<!-- System Generated Local Edit Modal -->
+<div class="modal fade" [class.show]="showPredefinedLocalEditModal" [style.display]="showPredefinedLocalEditModal ? 'block' : 'none'" tabindex="-1" *ngIf="showPredefinedLocalEditModal" style="z-index:200000;">
+  <div class="modal-dialog modal-dialog-centered" role="dialog" aria-modal="true">
+    <div class="modal-content modal-card" style="z-index:200001;">
+      <div class="modal-header border-0 pb-2">
+        <h5 class="modal-title" style="font-weight: 700; color: #0f172a;">Edit System-Generated Session</h5>
+        <button type="button" class="btn-close" (click)="closePredefinedLocalEditModal()"></button>
+      </div>
+      <div class="modal-body pt-2">
+        <p *ngIf="!isLoggedIn" style="color: #475569;">This is a system-generated session. When you edit it, a copy will be created and saved to your device only (not synced to your account).</p>
+        <p *ngIf="isLoggedIn" style="color: #475569;">This is a system-generated session. When you edit it, a copy will be created and saved to your account.</p>
+        <p class="mb-0" style="color: #475569;">The original template will remain unchanged.</p>
+      </div>
+      <div class="modal-footer border-0 d-flex gap-3">
+        <button type="button" class="btn btn-outline-secondary flex-grow-1" (click)="closePredefinedLocalEditModal()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Cancel</button>
+        <button type="button" class="btn btn-primary flex-grow-1" (click)="confirmPredefinedLocalEdit()" style="padding: 0.6rem 1.2rem; font-weight: 700; border-radius: 10px;">Continue Editing</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showPredefinedLocalEditModal" *ngIf="showPredefinedLocalEditModal" (click)="closePredefinedLocalEditModal()" style="z-index:199999;"></div>
