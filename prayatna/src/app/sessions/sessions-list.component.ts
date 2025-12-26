@@ -23,6 +23,7 @@ export class SessionsListComponent implements OnInit, OnDestroy {
   showLocalStorageWarning = false;
   isLoggedIn = false;
   fromAddButton = false;
+  isLoading = true;
   private sub = new Subscription();
 
   constructor(private sessionsService: SessionsService, private router: Router, private cdr: ChangeDetectorRef, private oauthService: OAuthService) {}
@@ -43,11 +44,14 @@ export class SessionsListComponent implements OnInit, OnDestroy {
     this.sub.add(this.sessionsService.sessions$.subscribe(s => {
       this.sessions = s;
       console.log('Sessions updated in list component:', s.length);
+      this.isLoading = false;
       this.cdr.detectChanges();
     }));
     // Always refresh when component initializes to get latest data
+    this.isLoading = true;
     this.sessionsService.refreshSessions().catch(err => {
       this.errorMessage = 'Failed to load sessions. Please try again.';
+      this.isLoading = false;
       console.error('Refresh failed:', err);
     });
   }

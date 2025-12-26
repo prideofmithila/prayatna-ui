@@ -3,7 +3,16 @@
         <button type="button" class="btn-close" (click)="errorMessage = null"></button>
       </div>
 
-<div class="sessions-page container py-3 mt-4">
+<div class="sessions-page container py-3 mt-4" [style.position]="isLoading ? 'relative' : 'static'">
+  <!-- Loading Overlay -->
+  <div *ngIf="isLoading" class="loader-overlay">
+    <div class="spinner-container">
+      <div class="spinner-border" role="status" style="color: #0b4bb4;">
+        <span class="visually-hidden">Loading sessions...</span>
+      </div>
+      <p class="text-muted mt-2" style="font-size: 0.95rem;">Loading sessions...</p>
+    </div>
+  </div>
   <div class="d-flex mb-3 align-items-center gap-3 actions-bar">
     <div class="flex-grow-1 search-holder">
       <div class="search-full">
