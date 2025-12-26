@@ -1,0 +1,64 @@
+<div class="help-container">
+  <div class="help-header">
+    <button class="btn-back" (click)="goBack()" title="Back to Sessions">
+      <span class="material-icons">arrow_back</span>
+    </button>
+    <h1>Help & Documentation</h1>
+  </div>
+
+  <div class="help-search">
+    <input
+      type="text"
+      placeholder="Search help topics..."
+      [(ngModel)]="searchTerm"
+      (input)="searchHelp(searchTerm)"
+      class="search-input"
+      aria-label="Search help topics"
+    >
+  </div>
+
+  <div class="help-content">
+    <!-- Sidebar Navigation -->
+    <aside class="help-sidebar">
+      <div class="sidebar-title">Topics</div>
+      <nav class="help-nav">
+        <button
+          *ngFor="let section of filteredSections"
+          class="nav-item"
+          [class.active]="selectedSection?.id === section.id"
+          (click)="selectSection(section)"
+          type="button"
+        >
+          <span class="nav-icon material-icons">{{ section.icon }}</span>
+          <span class="nav-text">{{ section.title }}</span>
+        </button>
+      </nav>
+      <div *ngIf="filteredSections.length === 0" class="no-results">
+        No topics found matching your search.
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="help-main">
+      <div *ngIf="selectedSection" class="help-article">
+        <div class="article-header">
+          <h2>{{ selectedSection.title }}</h2>
+          <p class="article-description">{{ selectedSection.description }}</p>
+        </div>
+
+        <div class="article-content" [innerHTML]="selectedSection.content"></div>
+
+        <div class="article-footer">
+          <p class="article-updated">
+            <span class="material-icons">info</span>
+            Last updated: {{ selectedSection.lastUpdated }}
+          </p>
+        </div>
+      </div>
+
+      <div *ngIf="!selectedSection" class="no-content">
+        <p>Select a topic from the sidebar to get started.</p>
+      </div>
+    </main>
+  </div>
+</div>

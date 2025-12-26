@@ -147,6 +147,10 @@
             <span class="material-icons nav-icon">info</span>
             <span>{{ link.label }}</span>
           </a>
+          <a class="nav-link" *ngIf="link.label === 'Help'" [routerLink]="link.route" (click)="closeOffcanvas()">
+            <span class="material-icons nav-icon">help_outline</span>
+            <span>{{ link.label }}</span>
+          </a>
 
           <div *ngIf="link.label === 'Daily Quiz'" class="w-100">
             <button class="btn w-100 nav-link text-start nav-row" (click)="toggleMobileQuiz($event)">
@@ -162,7 +166,7 @@
           <div *ngIf="link.label === 'Practice Tool'" class="w-100">
             <button class="btn w-100 nav-link text-start nav-row" (click)="toggleMobilePractice($event)">
               <span class="nav-icon-col"><span class="material-icons nav-icon">bolt</span></span>
-              <span class="nav-text">Practice Tool</span>
+              <span class="nav-text">Practice Tools</span>
               <span class="nav-caret material-icons">{{ mobilePracticeOpen ? 'expand_less' : 'expand_more' }}</span>
             </button>
             <div class="ps-4" *ngIf="mobilePracticeOpen">

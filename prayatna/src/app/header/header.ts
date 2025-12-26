@@ -18,7 +18,8 @@ export class Header implements AfterViewInit, OnDestroy {
     { label: 'Practice Tool', route: null },
     { label: 'Daily Quiz', route: null },
     { label: 'Social', route: null },
-    { label: 'About', route: '/about' }
+    { label: 'About', route: '/about' },
+    { label: 'Help', route: '/help' }
   ];
 
   offcanvasLinks = [...this.links];
