@@ -28,11 +28,11 @@ export class HelpComponent implements OnInit {
       id: 'getting-started',
       title: 'Getting Started',
       icon: 'rocket_launch',
-      description: 'Learn the basics of Prayatna and how to create your first session',
+      description: 'Learn the basics of BodhPrepIAS and how to create your first session',
       lastUpdated: 'December 26, 2025',
       content: `
-        <h3>Welcome to Prayatna!</h3>
-        <p>Prayatna is a powerful study session planner and timer. Here's how to get started:</p>
+        <h3>Welcome to BodhPrepIAS!</h3>
+        <p>BodhPrepIAS is a powerful study session planner and timer. Here's how to get started:</p>
         <ol>
           <li><strong>Create Your Account</strong> (Optional) - Sign in to sync sessions across devices</li>
           <li><strong>Create a Session</strong> - Define your study topic and tasks</li>
@@ -101,7 +101,7 @@ export class HelpComponent implements OnInit {
       lastUpdated: 'December 26, 2025',
       content: `
         <h3>What are System-Generated Sessions?</h3>
-        <p>System-generated sessions are study templates created by Prayatna to help you get started. They're labeled with a "System Generated" tag.</p>
+        <p>System-generated sessions are study templates created by BodhPrepIAS to help you get started. They're labeled with a "System Generated" tag.</p>
         <h4>Key Features</h4>
         <ul>
           <li><strong>Read-Only Original</strong> - Templates cannot be directly edited</li>
@@ -137,7 +137,7 @@ export class HelpComponent implements OnInit {
         </ul>
         <h4>With Account (Signed In)</h4>
         <ul>
-          <li>Sessions saved to your Prayatna account</li>
+          <li>Sessions saved to your BodhPrepIAS account</li>
           <li>Accessible from any device</li>
           <li>Automatic syncing across devices</li>
           <li>Permanent backup of your sessions</li>
@@ -189,7 +189,7 @@ export class HelpComponent implements OnInit {
       id: 'best-practices',
       title: 'Best Practices',
       icon: 'lightbulb',
-      description: 'Tips and tricks for getting the most out of Prayatna',
+      description: 'Tips and tricks for getting the most out of BodhPrepIAS',
       lastUpdated: 'December 26, 2025',
       content: `
         <h3>Session Planning Tips</h3>

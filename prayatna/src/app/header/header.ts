@@ -17,6 +17,7 @@ export class Header implements AfterViewInit, OnDestroy {
     { label: 'Home', route: '/' },
     { label: 'Practice Tool', route: null },
     { label: 'Daily Quiz', route: null },
+    { label: 'Mains Paper Evaluation', route: null },
     { label: 'Social', route: null },
     { label: 'About', route: '/about' },
     { label: 'Help', route: '/help' }
@@ -40,7 +41,9 @@ export class Header implements AfterViewInit, OnDestroy {
   showQuizDropdown = false;
   showPracticeDropdown = false;
   showSocialDropdown = false;
+  showMainPaperDropdown = false;
   mobileSocialOpen = false;
+  mobileMainPaperOpen = false;
 
   private _offcanvasInstance: Offcanvas | null = null;
   private resizeObserver: any;
@@ -229,6 +232,7 @@ export class Header implements AfterViewInit, OnDestroy {
     this.mobileQuizOpen = false;
     this.mobilePracticeOpen = false;
     this.mobileSocialOpen = false;
+    this.mobileMainPaperOpen = false;
   }
 
   // Auth helpers
@@ -266,7 +270,11 @@ export class Header implements AfterViewInit, OnDestroy {
     event.preventDefault();
     event.stopPropagation();
     this.showQuizDropdown = !this.showQuizDropdown;
-    if (this.showQuizDropdown) this.showPracticeDropdown = false;
+    if (this.showQuizDropdown) {
+      this.showPracticeDropdown = false;
+      this.showMainPaperDropdown = false;
+      this.showSocialDropdown = false;
+    }
     this.cdr.detectChanges();
   }
 
@@ -274,7 +282,23 @@ export class Header implements AfterViewInit, OnDestroy {
     event.preventDefault();
     event.stopPropagation();
     this.showPracticeDropdown = !this.showPracticeDropdown;
-    if (this.showPracticeDropdown) this.showQuizDropdown = false;
+    if (this.showPracticeDropdown) {
+      this.showQuizDropdown = false;
+      this.showMainPaperDropdown = false;
+      this.showSocialDropdown = false;
+    }
+    this.cdr.detectChanges();
+  }
+
+  toggleMainPaperDropdown(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.showMainPaperDropdown = !this.showMainPaperDropdown;
+    if (this.showMainPaperDropdown) {
+      this.showQuizDropdown = false;
+      this.showPracticeDropdown = false;
+      this.showSocialDropdown = false;
+    }
     this.cdr.detectChanges();
   }
 
@@ -283,9 +307,11 @@ export class Header implements AfterViewInit, OnDestroy {
     this.showPracticeDropdown = false;
     this.showQuizDropdown = false;
     this.showSocialDropdown = false;
+    this.showMainPaperDropdown = false;
     this.mobilePracticeOpen = false;
     this.mobileQuizOpen = false;
     this.mobileSocialOpen = false;
+    this.mobileMainPaperOpen = false;
     this.router.navigate(['/sessions']);
     this.cdr.detectChanges();
   }
@@ -312,6 +338,7 @@ export class Header implements AfterViewInit, OnDestroy {
     if (this.showSocialDropdown) {
       this.showQuizDropdown = false;
       this.showPracticeDropdown = false;
+      this.showMainPaperDropdown = false;
     }
     this.cdr.detectChanges();
   }
@@ -319,5 +346,10 @@ export class Header implements AfterViewInit, OnDestroy {
   toggleMobileSocial(event: Event) {
     event.preventDefault();
     this.mobileSocialOpen = !this.mobileSocialOpen;
+  }
+
+  toggleMobileMainPaper(event: Event) {
+    event.preventDefault();
+    this.mobileMainPaperOpen = !this.mobileMainPaperOpen;
   }
 }

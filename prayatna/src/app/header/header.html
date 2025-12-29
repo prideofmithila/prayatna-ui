@@ -13,16 +13,16 @@
         <!-- Desktop brand on left -->
         <a class="navbar-brand d-none d-md-inline-flex align-items-center gap-2" routerLink="/">
           <img src="assets/logo.png" alt="logo" class="app-logo" onerror="this.style.display='none'"/>
-          <span class="fs-5 fw-semibold">Prayatna</span>
+          <span class="fs-5 fw-semibold">BodhPrepIAS</span>
         </a>
       </div>
 
       <!-- Center: Links (desktop only) -->
       <div class="flex-grow-1 d-none d-md-flex justify-content-center position-relative">
         <ul class="nav header-nav" #centerNav>
-          <li class="nav-item" *ngFor="let link of links | slice:0:visibleCount; let i = index" [class.position-relative]="link.label === 'Daily Quiz' || link.label === 'Practice Tool' || link.label === 'Social'">
+          <li class="nav-item" *ngFor="let link of links | slice:0:visibleCount; let i = index" [class.position-relative]="link.label === 'Daily Quiz' || link.label === 'Practice Tool' || link.label === 'Social' || link.label === 'Mains Paper Evaluation'">
             <!-- Regular links -->
-            <a class="nav-link" *ngIf="link.label !== 'Daily Quiz' && link.label !== 'Practice Tool' && link.label !== 'Social'" [routerLink]="link.route" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ link.label }}</a>
+            <a class="nav-link" *ngIf="link.label !== 'Daily Quiz' && link.label !== 'Practice Tool' && link.label !== 'Social' && link.label !== 'Mains Paper Evaluation'" [routerLink]="link.route" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ link.label }}</a>
 
             <!-- Daily Quiz dropdown (coming soon) -->
             <a class="nav-link has-icon" href="#" *ngIf="link.label === 'Daily Quiz'" (click)="toggleQuizDropdown($event)" [class.active]="showQuizDropdown">
@@ -48,6 +48,17 @@
                     Session Timer
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <!-- Main Paper Evaluation dropdown (coming soon) -->
+            <a class="nav-link has-icon" href="#" *ngIf="link.label === 'Mains Paper Evaluation'" (click)="toggleMainPaperDropdown($event)" [class.active]="showMainPaperDropdown">
+              <span class="material-icons nav-icon">edit_note</span>
+              <span>Mains Paper Evaluation</span>
+            </a>
+            <div class="quiz-menu card" *ngIf="link.label === 'Mains Paper Evaluation' && showMainPaperDropdown" (click)="$event.stopPropagation()">
+              <div class="card-body py-2 px-3">
+                <div class="small text-muted">Coming soon — hang tight!</div>
               </div>
             </div>
 
@@ -81,7 +92,7 @@
       <div class="flex-grow-1 text-center d-md-none">
         <a class="navbar-brand d-inline-flex align-items-center gap-2" routerLink="/">
           <img src="assets/logo.png" alt="logo" class="app-logo" onerror="this.style.display='none'"/>
-          <span class="fs-5 fw-semibold">Prayatna</span>
+          <span class="fs-5 fw-semibold">BodhPrepIAS</span>
         </a>
       </div>
 
@@ -132,7 +143,7 @@
 <!-- Offcanvas menu (left) -->
 <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasMenu" aria-labelledby="offcanvasMenuLabel">
   <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="offcanvasMenuLabel">Prayatna</h5>
+    <h5 class="offcanvas-title" id="offcanvasMenuLabel">BodhPrepIAS</h5>
     <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
   </div>
   <div class="offcanvas-body" #offcanvasBody>
@@ -174,6 +185,17 @@
                 <span class="material-icons" style="font-size:18px;">timer</span>
                 <span>Session Timer</span>
               </a>
+            </div>
+          </div>
+
+          <div *ngIf="link.label === 'Mains Paper Evaluation'" class="w-100">
+            <button class="btn w-100 nav-link text-start nav-row" (click)="toggleMobileMainPaper($event)">
+              <span class="nav-icon-col"><span class="material-icons nav-icon">edit_note</span></span>
+              <span class="nav-text">Mains Paper Evaluation</span>
+              <span class="nav-caret material-icons">{{ mobileMainPaperOpen ? 'expand_less' : 'expand_more' }}</span>
+            </button>
+            <div class="ps-4" *ngIf="mobileMainPaperOpen">
+              <div class="text-muted small py-2 rounded-2 bg-light">Coming soon — hang tight!</div>
             </div>
           </div>
 
